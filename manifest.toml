@@ -11,3 +11,6 @@ requires = []
 type = "runtime"
 config = {}
 
+[[handlers]]
+type = "supervisor"
+config = {}
