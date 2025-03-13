@@ -4,4 +4,6 @@ world hello-world {
     import runtime;
     export actor;
     export message-server-client;
+
+    import supervisor;
 }

@@ -3,22 +3,17 @@ mod bindings;
 use crate::bindings::exports::ntwk::theater::actor::Guest;
 use crate::bindings::exports::ntwk::theater::message_server_client::Guest as MessageServerClient;
 use crate::bindings::ntwk::theater::runtime::log;
+use crate::bindings::ntwk::theater::supervisor::spawn;
 use crate::bindings::ntwk::theater::types::State;
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-struct AppState {
-    count: u32,
-    messages: Vec<String>,
-}
+struct AppState {}
 
 impl Default for AppState {
     fn default() -> Self {
-        Self {
-            count: 0,
-            messages: Vec::new(),
-        }
+        Self {}
     }
 }
 
@@ -47,7 +42,7 @@ impl MessageServerClient for Actor {
     ) -> Result<(Option<Vec<u8>>,), String> {
         log("Handling send message");
         let (data,) = params;
-        
+
         // Parse the current state
         let state_bytes = state.unwrap_or_default();
         let mut app_state: AppState = if !state_bytes.is_empty() {
@@ -55,20 +50,17 @@ impl MessageServerClient for Actor {
         } else {
             AppState::default()
         };
-        
+
         // Try to parse the message as a string
         if let Ok(message) = String::from_utf8(data) {
             log(&format!("Received message: {}", message));
-            app_state.messages.push(message);
         } else {
-            log("Received binary data");
-            app_state.count += 1;
         }
-        
+
         // Save the updated state
         let updated_state_bytes = serde_json::to_vec(&app_state).map_err(|e| e.to_string())?;
         let updated_state = Some(updated_state_bytes);
-        
+
         Ok((updated_state,))
     }
 
@@ -78,7 +70,7 @@ impl MessageServerClient for Actor {
     ) -> Result<(Option<Vec<u8>>, (Vec<u8>,)), String> {
         log("Handling request message");
         let (data,) = params;
-        
+
         // Parse the current state
         let state_bytes = state.unwrap_or_default();
         let mut app_state: AppState = if !state_bytes.is_empty() {
@@ -86,42 +78,30 @@ impl MessageServerClient for Actor {
         } else {
             AppState::default()
         };
-        
+
         // Try to parse the message as a string
         let response = if let Ok(message) = String::from_utf8(data.clone()) {
             log(&format!("Received request: {}", message));
-            
+
             match message.as_str() {
-                "count" => {
-                    let response = format!("Current count: {}", app_state.count);
-                    response.into_bytes()
+                "start" => {
+                    let child_id = spawn("/Users/colinrozzi/work/child/target/wasm32-unknown-unknown/release/child.wasm", None)
+                        .map_err(|e| e.to_string())?;
+                    log(&format!("Spawned child actor with ID: {}", child_id));
+                    "Started child actor".as_bytes().to_vec()
                 }
-                "messages" => {
-                    let response = format!("Messages: {:?}", app_state.messages);
-                    response.into_bytes()
-                }
-                "increment" => {
-                    app_state.count += 1;
-                    let response = format!("Count incremented to: {}", app_state.count);
-                    response.into_bytes()
-                }
-                _ => {
-                    // Store the message
-                    app_state.messages.push(message);
-                    let response = "Message stored".to_string();
-                    response.into_bytes()
-                }
+                _ => "Unknown request".as_bytes().to_vec(),
             }
         } else {
             log("Received binary data request");
             // Just echo back the data
             data
         };
-        
+
         // Save the updated state
         let updated_state_bytes = serde_json::to_vec(&app_state).map_err(|e| e.to_string())?;
         let updated_state = Some(updated_state_bytes);
-        
+
         Ok((updated_state, (response,)))
     }
 }
