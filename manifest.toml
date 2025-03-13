@@ -1,0 +1,13 @@
+name = "manager"
+version = "0.1.0"
+description = "A basic Theater actor"
+component_path = "/Users/colinrozzi/work/actors/manager/target/wasm32-unknown-unknown/release/manager.wasm"
+
+[interface]
+implements = "ntwk:theater/actor"
+requires = []
+
+[[handlers]]
+type = "runtime"
+config = {}
+
