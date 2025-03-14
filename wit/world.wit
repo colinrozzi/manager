@@ -6,4 +6,5 @@ world hello-world {
     export message-server-client;
 
     import supervisor;
+    import message-server-host;
 }

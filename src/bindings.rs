@@ -15,6 +15,7 @@ pub mod ntwk {
             /// Generic message type as bytes that can be serialized/deserialized
             pub type Json = _rt::Vec<u8>;
             pub type State = Option<_rt::Vec<u8>>;
+            pub type ActorId = _rt::String;
             #[derive(Clone)]
             pub struct Event {
                 pub event_type: _rt::String,
@@ -649,6 +650,142 @@ pub mod ntwk {
                 }
             }
         }
+        #[allow(dead_code, clippy::all)]
+        pub mod message_server_host {
+            #[used]
+            #[doc(hidden)]
+            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
+            use super::super::super::_rt;
+            pub type Json = super::super::super::ntwk::theater::types::Json;
+            pub type ActorId = super::super::super::ntwk::theater::types::ActorId;
+            #[allow(unused_unsafe, clippy::all)]
+            /// send and forget message
+            pub fn send(actor_id: &ActorId, msg: &Json) -> Result<(), _rt::String> {
+                unsafe {
+                    #[repr(align(4))]
+                    struct RetArea([::core::mem::MaybeUninit<u8>; 12]);
+                    let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 12]);
+                    let vec0 = actor_id;
+                    let ptr0 = vec0.as_ptr().cast::<u8>();
+                    let len0 = vec0.len();
+                    let vec1 = msg;
+                    let ptr1 = vec1.as_ptr().cast::<u8>();
+                    let len1 = vec1.len();
+                    let ptr2 = ret_area.0.as_mut_ptr().cast::<u8>();
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "ntwk:theater/message-server-host")]
+                    extern "C" {
+                        #[link_name = "send"]
+                        fn wit_import(
+                            _: *mut u8,
+                            _: usize,
+                            _: *mut u8,
+                            _: usize,
+                            _: *mut u8,
+                        );
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import(
+                        _: *mut u8,
+                        _: usize,
+                        _: *mut u8,
+                        _: usize,
+                        _: *mut u8,
+                    ) {
+                        unreachable!()
+                    }
+                    wit_import(ptr0.cast_mut(), len0, ptr1.cast_mut(), len1, ptr2);
+                    let l3 = i32::from(*ptr2.add(0).cast::<u8>());
+                    match l3 {
+                        0 => {
+                            let e = ();
+                            Ok(e)
+                        }
+                        1 => {
+                            let e = {
+                                let l4 = *ptr2.add(4).cast::<*mut u8>();
+                                let l5 = *ptr2.add(8).cast::<usize>();
+                                let len6 = l5;
+                                let bytes6 = _rt::Vec::from_raw_parts(
+                                    l4.cast(),
+                                    len6,
+                                    len6,
+                                );
+                                _rt::string_lift(bytes6)
+                            };
+                            Err(e)
+                        }
+                        _ => _rt::invalid_enum_discriminant(),
+                    }
+                }
+            }
+            #[allow(unused_unsafe, clippy::all)]
+            /// send message and wait for response
+            pub fn request(actor_id: &ActorId, msg: &Json) -> Result<Json, _rt::String> {
+                unsafe {
+                    #[repr(align(4))]
+                    struct RetArea([::core::mem::MaybeUninit<u8>; 12]);
+                    let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 12]);
+                    let vec0 = actor_id;
+                    let ptr0 = vec0.as_ptr().cast::<u8>();
+                    let len0 = vec0.len();
+                    let vec1 = msg;
+                    let ptr1 = vec1.as_ptr().cast::<u8>();
+                    let len1 = vec1.len();
+                    let ptr2 = ret_area.0.as_mut_ptr().cast::<u8>();
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "ntwk:theater/message-server-host")]
+                    extern "C" {
+                        #[link_name = "request"]
+                        fn wit_import(
+                            _: *mut u8,
+                            _: usize,
+                            _: *mut u8,
+                            _: usize,
+                            _: *mut u8,
+                        );
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import(
+                        _: *mut u8,
+                        _: usize,
+                        _: *mut u8,
+                        _: usize,
+                        _: *mut u8,
+                    ) {
+                        unreachable!()
+                    }
+                    wit_import(ptr0.cast_mut(), len0, ptr1.cast_mut(), len1, ptr2);
+                    let l3 = i32::from(*ptr2.add(0).cast::<u8>());
+                    match l3 {
+                        0 => {
+                            let e = {
+                                let l4 = *ptr2.add(4).cast::<*mut u8>();
+                                let l5 = *ptr2.add(8).cast::<usize>();
+                                let len6 = l5;
+                                _rt::Vec::from_raw_parts(l4.cast(), len6, len6)
+                            };
+                            Ok(e)
+                        }
+                        1 => {
+                            let e = {
+                                let l7 = *ptr2.add(4).cast::<*mut u8>();
+                                let l8 = *ptr2.add(8).cast::<usize>();
+                                let len9 = l8;
+                                let bytes9 = _rt::Vec::from_raw_parts(
+                                    l7.cast(),
+                                    len9,
+                                    len9,
+                                );
+                                _rt::string_lift(bytes9)
+                            };
+                            Err(e)
+                        }
+                        _ => _rt::invalid_enum_discriminant(),
+                    }
+                }
+            }
+        }
     }
 }
 #[rustfmt::skip]
@@ -1070,9 +1207,9 @@ pub(crate) use __export_hello_world_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.36.0:ntwk:theater:hello-world:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 1116] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xda\x07\x01A\x02\x01\
-A\x0f\x01B\x0f\x01p}\x04\0\x04json\x03\0\0\x01p}\x01k\x02\x04\0\x05state\x03\0\x03\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 1262] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xec\x08\x01A\x02\x01\
+A\x11\x01B\x0f\x01p}\x04\0\x04json\x03\0\0\x01p}\x01k\x02\x04\0\x05state\x03\0\x03\
 \x01s\x04\0\x08actor-id\x03\0\x05\x01kw\x01r\x03\x0aevent-types\x06parent\x07\x04\
 data\x01\x04\0\x05event\x03\0\x08\x01r\x02\x04hashw\x05event\x09\x04\0\x0ameta-e\
 vent\x03\0\x0a\x01p\x0b\x01r\x01\x06events\x0c\x04\0\x05chain\x03\0\x0d\x03\0\x12\
@@ -1088,17 +1225,20 @@ j\x01s\x01s\x01@\x02\x08manifests\x0ainit-bytes\x01\0\x04\x04\0\x05spawn\x01\x05
 \x04\0\x0astop-child\x01\x0a\x04\0\x0drestart-child\x01\x0a\x01j\x01\x01\x01s\x01\
 @\x01\x08child-ids\0\x0b\x04\0\x0fget-child-state\x01\x0c\x01p\x03\x01j\x01\x0d\x01\
 s\x01@\x01\x08child-ids\0\x0e\x04\0\x10get-child-events\x01\x0f\x03\0\x17ntwk:th\
-eater/supervisor\x05\x05\x02\x03\0\0\x05state\x01B\x07\x02\x03\x02\x01\x06\x04\0\
-\x05state\x03\0\0\x01o\x01s\x01o\x01\x01\x01j\x01\x03\x01s\x01@\x02\x05state\x01\
-\x06params\x02\0\x04\x04\0\x04init\x01\x05\x04\0\x12ntwk:theater/actor\x05\x07\x02\
-\x03\0\0\x05event\x01B\x0e\x02\x03\x02\x01\x01\x04\0\x04json\x03\0\0\x02\x03\x02\
-\x01\x08\x04\0\x05event\x03\0\x02\x01k\x01\x01o\x01\x01\x01o\x01\x04\x01j\x01\x06\
-\x01s\x01@\x02\x05state\x04\x06params\x05\0\x07\x04\0\x0bhandle-send\x01\x08\x01\
-o\x02\x04\x05\x01j\x01\x09\x01s\x01@\x02\x05state\x04\x06params\x05\0\x0a\x04\0\x0e\
-handle-request\x01\x0b\x04\0\"ntwk:theater/message-server-client\x05\x09\x04\0\x18\
-ntwk:theater/hello-world\x04\0\x0b\x11\x01\0\x0bhello-world\x03\0\0\0G\x09produc\
-ers\x01\x0cprocessed-by\x02\x0dwit-component\x070.220.1\x10wit-bindgen-rust\x060\
-.36.0";
+eater/supervisor\x05\x05\x01B\x0a\x02\x03\x02\x01\x01\x04\0\x04json\x03\0\0\x02\x03\
+\x02\x01\x03\x04\0\x08actor-id\x03\0\x02\x01j\0\x01s\x01@\x02\x08actor-id\x03\x03\
+msg\x01\0\x04\x04\0\x04send\x01\x05\x01j\x01\x01\x01s\x01@\x02\x08actor-id\x03\x03\
+msg\x01\0\x06\x04\0\x07request\x01\x07\x03\0\x20ntwk:theater/message-server-host\
+\x05\x06\x02\x03\0\0\x05state\x01B\x07\x02\x03\x02\x01\x07\x04\0\x05state\x03\0\0\
+\x01o\x01s\x01o\x01\x01\x01j\x01\x03\x01s\x01@\x02\x05state\x01\x06params\x02\0\x04\
+\x04\0\x04init\x01\x05\x04\0\x12ntwk:theater/actor\x05\x08\x02\x03\0\0\x05event\x01\
+B\x0e\x02\x03\x02\x01\x01\x04\0\x04json\x03\0\0\x02\x03\x02\x01\x09\x04\0\x05eve\
+nt\x03\0\x02\x01k\x01\x01o\x01\x01\x01o\x01\x04\x01j\x01\x06\x01s\x01@\x02\x05st\
+ate\x04\x06params\x05\0\x07\x04\0\x0bhandle-send\x01\x08\x01o\x02\x04\x05\x01j\x01\
+\x09\x01s\x01@\x02\x05state\x04\x06params\x05\0\x0a\x04\0\x0ehandle-request\x01\x0b\
+\x04\0\"ntwk:theater/message-server-client\x05\x0a\x04\0\x18ntwk:theater/hello-w\
+orld\x04\0\x0b\x11\x01\0\x0bhello-world\x03\0\0\0G\x09producers\x01\x0cprocessed\
+-by\x02\x0dwit-component\x070.220.1\x10wit-bindgen-rust\x060.36.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {
