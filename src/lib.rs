@@ -4,6 +4,7 @@ use crate::bindings::exports::ntwk::theater::actor::Guest;
 use crate::bindings::exports::ntwk::theater::message_server_client::Guest as MessageServerClient;
 use crate::bindings::ntwk::theater::message_server_host::request;
 use crate::bindings::ntwk::theater::runtime::log;
+use crate::bindings::ntwk::theater::store;
 use crate::bindings::ntwk::theater::supervisor::{spawn, stop_child};
 use crate::bindings::ntwk::theater::types::State;
 
@@ -12,16 +13,46 @@ use serde_json::{json, Value};
 
 #[derive(Serialize, Deserialize)]
 struct InitData {
-    fs_hash: String,
-    store_id: String,
+    build_store_id: Option<String>,
+    runtime_content_fs_actor_id: String,
+    anthropic_api_key: String,
 }
 
 #[derive(Serialize, Deserialize)]
 struct AppState {
     child_id: Option<String>,
     build_actor_id: String,
-    fs_hash: String,
-    store_id: String,
+    programmer_actor_id: String,
+    runtime_content_fs_actor_id: String,
+    build_store_id: String,
+}
+
+/// Structure to hold build result information
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct BuildOutput {
+    success: bool,
+    stdout: String,
+    stderr: String,
+    wasm_path: Option<String>,
+    wasm_hash: Option<String>,
+    build_logs: Vec<String>,
+    error: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+enum Action {
+    Start,
+    Stop,
+    Build,
+    Change(String),
+}
+
+/// Result of a get info operation
+#[derive(Serialize, Deserialize, Debug)]
+pub struct InfoResult {
+    pub name: String,
+    pub head_hash: String,
+    pub store_id: String,
 }
 
 struct Actor;
@@ -35,16 +66,36 @@ impl Guest for Actor {
         let init_state =
             serde_json::from_slice::<InitData>(&state.unwrap()).map_err(|e| e.to_string())?;
 
+        let build_store_id = match init_state.build_store_id {
+            Some(id) => id,
+            None => store::new().map_err(|e| e.to_string())?,
+        };
+
+        log(&format!("Build store ID: {}", build_store_id));
+
         let build_actor_id = spawn("/Users/colinrozzi/work/actors/build-actor/actor.toml", None)
             .expect("Failed to spawn build actor");
-
         log(&format!("Build actor ID: {}", build_actor_id));
+
+        let programmer_init = json!({
+            "content_fs_actor_id": init_state.runtime_content_fs_actor_id,
+            "anthropic_api_key": init_state.anthropic_api_key,
+        });
+
+        let programmer_actor_id = spawn(
+            "/Users/colinrozzi/work/actors/programmer/manifest.toml",
+            Some(&serde_json::to_vec(&programmer_init).unwrap()),
+        )
+        .expect("Failed to spawn programmer actor");
+
+        log(&format!("Programmer actor ID: {}", programmer_actor_id));
 
         let app_state = AppState {
             child_id: None,
             build_actor_id,
-            fs_hash: init_state.fs_hash,
-            store_id: init_state.store_id,
+            runtime_content_fs_actor_id: init_state.runtime_content_fs_actor_id,
+            build_store_id,
+            programmer_actor_id,
         };
         let state_bytes = serde_json::to_vec(&app_state).map_err(|e| e.to_string())?;
 
@@ -99,50 +150,107 @@ impl MessageServerClient for Actor {
             Err("No state found".to_string())?
         };
 
-        // Try to parse the message as a string
-        let response = if let Ok(message) = String::from_utf8(data.clone()) {
-            log(&format!("Received request: {}", message));
+        let child_manifest = r#"
+name = "child"
+version = "0.1.0"
+description = "An HTTP server Theater actor"
+component_path = "store://44768743-9232-43de-9819-47c210588b2b/wasm"
 
-            match message.as_str() {
-                "start" => {
-                    let child_id = spawn("/Users/colinrozzi/work/actors/child/manifest.toml", None)
-                        .map_err(|e| e.to_string())?;
-                    log(&format!("Spawned child actor with ID: {}", child_id));
-                    app_state.child_id = Some(child_id);
-                    "Started child actor".as_bytes().to_vec()
-                }
-                "stop" => {
-                    if let Some(child_id) = app_state.child_id.take() {
-                        log(&format!("Stopping child actor with ID: {}", child_id));
-                        stop_child(&child_id).map_err(|e| e.to_string())?;
-                        app_state.child_id = None;
-                        "Stopped child actor".as_bytes().to_vec()
-                    } else {
-                        "No child actor to stop".as_bytes().to_vec()
-                    }
-                }
-                "build" => {
-                    let build_state = json!({
-                        "fs_hash": app_state.fs_hash,
-                        "store_id": app_state.store_id,
-                    });
-                    let result = request(
-                        &app_state.build_actor_id,
-                        &serde_json::to_vec(&build_state).unwrap(),
-                    )
-                    .map_err(|e| e.to_string())?;
-                    log(&format!(
-                        "Build actor response: {}",
-                        String::from_utf8(result.clone()).unwrap()
-                    ));
-                    result
-                }
-                _ => "Unknown request".as_bytes().to_vec(),
+[interface]
+implements = "ntwk:theater/actor"
+requires = []
+
+[[handlers]]
+type = "runtime"
+config = {}
+
+[[handlers]]
+type = "http-framework"
+config = {}
+        "#;
+
+        let action: Action = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
+
+        let response = match action {
+            Action::Start => {
+                let child_id = spawn(child_manifest, None).map_err(|e| e.to_string())?;
+                log(&format!("Spawned child actor with ID: {}", child_id));
+                app_state.child_id = Some(child_id);
+                "Started child actor".as_bytes().to_vec()
             }
-        } else {
-            log("Received binary data request");
-            // Just echo back the data
-            data
+            Action::Stop => {
+                if let Some(child_id) = app_state.child_id.take() {
+                    log(&format!("Stopping child actor with ID: {}", child_id));
+                    stop_child(&child_id).map_err(|e| e.to_string())?;
+                    app_state.child_id = None;
+                    "Stopped child actor".as_bytes().to_vec()
+                } else {
+                    "No child actor to stop".as_bytes().to_vec()
+                }
+            }
+            Action::Build => {
+                let runtime_info_response = request(
+                    &app_state.runtime_content_fs_actor_id,
+                    &serde_json::to_vec(&json!({"action": "get-info", "params": []})).unwrap(),
+                )
+                .expect("Failed to get programmer actor info");
+
+                log(&format!(
+                    "Received runtime info: {}",
+                    String::from_utf8(runtime_info_response.clone()).unwrap()
+                ));
+
+                let runtime_info_value: Value =
+                    serde_json::from_slice::<Value>(&runtime_info_response)
+                        .expect("Failed to parse runtime info");
+
+                let runtime_info = runtime_info_value.get("data").unwrap();
+
+                let cur_info = serde_json::from_value::<InfoResult>(runtime_info.clone())
+                    .expect("Failed to parse programmer actor info");
+                log(&format!("Programmer actor response: {:?}", cur_info));
+
+                let build_state = json!({
+                    "fs_hash": cur_info.head_hash,
+                    "store_id": cur_info.store_id,
+                    "build_store_id": app_state.build_store_id,
+                });
+                let result = request(
+                    &app_state.build_actor_id,
+                    &serde_json::to_vec(&build_state).unwrap(),
+                )
+                .map_err(|e| e.to_string())?;
+                log(&format!(
+                    "Build actor response: {}",
+                    String::from_utf8(result.clone()).unwrap()
+                ));
+
+                let result: BuildOutput =
+                    serde_json::from_slice(&result).map_err(|e| e.to_string())?;
+                log(&format!("Build output: {:?}", result));
+
+                let bytes = store::get_by_label(&app_state.build_store_id, "wasm")
+                    .map_err(|e| e.to_string())?;
+
+                log(&format!("Wasm bytes: {:?}", bytes));
+                "Built".as_bytes().to_vec()
+            }
+            Action::Change(req) => {
+                log(&format!("Received change request: {}", req));
+
+                let result = request(
+                    &app_state.programmer_actor_id,
+                    &serde_json::to_vec(&json!({"change": req})).unwrap(),
+                )
+                .expect("Failed to send change request");
+
+                log(&format!(
+                    "Received programmer actor response: {}",
+                    String::from_utf8(result.clone()).unwrap()
+                ));
+
+                "Changed".as_bytes().to_vec()
+            }
         };
 
         // Save the updated state

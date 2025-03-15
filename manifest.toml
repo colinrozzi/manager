@@ -15,3 +15,8 @@ config = {}
 [[handlers]]
 type = "supervisor"
 config = {}
+
+[[handlers]]
+type = "store"
+config = {}
+

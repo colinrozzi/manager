@@ -7,4 +7,5 @@ world hello-world {
 
     import supervisor;
     import message-server-host;
+    import store;
 }
