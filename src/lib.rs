@@ -21,7 +21,6 @@ struct InitData {
 #[derive(Serialize, Deserialize)]
 struct AppState {
     child_id: Option<String>,
-    build_actor_id: String,
     programmer_actor_id: String,
     runtime_content_fs_actor_id: String,
     build_store_id: String,
@@ -73,10 +72,6 @@ impl Guest for Actor {
 
         log(&format!("Build store ID: {}", build_store_id));
 
-        let build_actor_id = spawn("/Users/colinrozzi/work/actors/build-actor/actor.toml", None)
-            .expect("Failed to spawn build actor");
-        log(&format!("Build actor ID: {}", build_actor_id));
-
         let programmer_init = json!({
             "content_fs_actor_id": init_state.runtime_content_fs_actor_id,
             "anthropic_api_key": init_state.anthropic_api_key,
@@ -92,7 +87,6 @@ impl Guest for Actor {
 
         let app_state = AppState {
             child_id: None,
-            build_actor_id,
             runtime_content_fs_actor_id: init_state.runtime_content_fs_actor_id,
             build_store_id,
             programmer_actor_id,
@@ -200,6 +194,13 @@ config = {}
                     String::from_utf8(runtime_info_response.clone()).unwrap()
                 ));
 
+                let build_actor_id =
+                    spawn("/Users/colinrozzi/work/actors/build-actor/actor.toml", None)
+                        .expect("Failed to spawn build actor");
+                log(&format!("Build actor ID: {}", build_actor_id));
+
+                log(&format!("Build actor ID: {}", build_actor_id.clone()));
+
                 let runtime_info_value: Value =
                     serde_json::from_slice::<Value>(&runtime_info_response)
                         .expect("Failed to parse runtime info");
@@ -215,11 +216,8 @@ config = {}
                     "store_id": cur_info.store_id,
                     "build_store_id": app_state.build_store_id,
                 });
-                let result = request(
-                    &app_state.build_actor_id,
-                    &serde_json::to_vec(&build_state).unwrap(),
-                )
-                .map_err(|e| e.to_string())?;
+                let result = request(&build_actor_id, &serde_json::to_vec(&build_state).unwrap())
+                    .map_err(|e| e.to_string())?;
                 log(&format!(
                     "Build actor response: {}",
                     String::from_utf8(result.clone()).unwrap()
@@ -233,6 +231,9 @@ config = {}
                     .map_err(|e| e.to_string())?;
 
                 log(&format!("Wasm bytes: {:?}", bytes));
+
+                stop_child(&build_actor_id).map_err(|e| e.to_string())?;
+
                 "Built".as_bytes().to_vec()
             }
             Action::Change(req) => {
