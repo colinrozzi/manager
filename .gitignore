@@ -1,2 +1,4 @@
 /target
+/logs
+/src/studio/logs
 init.json

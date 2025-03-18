@@ -1,77 +1,70 @@
 use colored::Colorize;
-use rustyline::error::ReadlineError;
-use rustyline::Editor;
-use rustyline::helper::DefaultHelper;
-use std::io::{self, Write};
+use std::io::{self, Write, BufRead};
 
 use crate::commands::{Args, Command, CommandError};
 use crate::display;
 use crate::session::Session;
 
 pub struct Repl {
-    editor: Editor<DefaultHelper>,
     session: Session,
 }
 
 impl Repl {
     pub fn new(args: Args) -> Self {
-        let editor = Editor::<DefaultHelper>::new().expect("Failed to create line editor");
         let session = Session::new(args.theater_path.clone(), args.host.clone(), args.port);
-
-        Self { editor, session }
+        Self { session }
     }
 
     pub fn run(&mut self) -> Result<(), CommandError> {
         println!("{}", "Welcome to Theater Studio CLI!".bright_green());
         println!("Type {} for usage information.", "help".bright_blue());
-
+        
+        let stdin = io::stdin();
+        let mut input = String::new();
+        
         loop {
             // Display the prompt and get user input
-            let prompt = display::print_prompt();
-            let readline = self.editor.readline(&prompt);
-
-            match readline {
-                Ok(line) => {
-                    // Add the line to history
-                    let _ = self.editor.add_history_entry(line.as_str());
-
-                    // Parse the command
-                    let command = Command::from_input(&line);
-
-                    // Execute the command
-                    match self.execute_command(command) {
-                        Ok(should_exit) => {
-                            if should_exit {
-                                break;
-                            }
-                        }
-                        Err(err) => {
-                            display::print_error(&format!("{}", err));
-                        }
+            print!("{}", display::print_prompt());
+            io::stdout().flush().unwrap();
+            
+            input.clear();
+            if stdin.lock().read_line(&mut input).unwrap() == 0 {
+                // EOF (Ctrl+D)
+                println!("Exiting...");
+                break;
+            }
+            
+            let line = input.trim();
+            
+            // Handle Ctrl+C
+            if line.is_empty() {
+                continue;
+            }
+            
+            // Parse the command
+            let command = Command::from_input(line);
+            
+            // Execute the command
+            match self.execute_command(command) {
+                Ok(should_exit) => {
+                    if should_exit {
+                        break;
                     }
                 }
-                Err(ReadlineError::Interrupted) => {
-                    println!("Press Ctrl-D or type 'exit' to exit");
-                }
-                Err(ReadlineError::Eof) => {
-                    println!("Exiting...");
-                    break;
-                }
                 Err(err) => {
-                    display::print_error(&format!("Error: {}", err));
-                    break;
+                    display::print_error(&format!("{}", err));
                 }
             }
-
+            
             // Flush stdout to ensure prompt and output are displayed correctly
             let _ = io::stdout().flush();
         }
-
+        
         // Make sure to clean up any running sessions
         if self.session.info.running {
             let _ = self.session.stop();
         }
-
+        
         Ok(())
     }
 
