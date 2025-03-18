@@ -1,7 +1,8 @@
-use rustyline::error::ReadlineError;
-use rustyline::{Editor, DefaultHelper};
-use std::io::{self, Write};
 use colored::Colorize;
+use rustyline::error::ReadlineError;
+use rustyline::Editor;
+use rustyline::helper::DefaultHelper;
+use std::io::{self, Write};
 
 use crate::commands::{Args, Command, CommandError};
 use crate::display;
@@ -15,11 +16,7 @@ pub struct Repl {
 impl Repl {
     pub fn new(args: Args) -> Self {
         let editor = Editor::<DefaultHelper>::new().expect("Failed to create line editor");
-        let session = Session::new(
-            args.theater_path.clone(),
-            args.host.clone(),
-            args.port,
-        );
+        let session = Session::new(args.theater_path.clone(), args.host.clone(), args.port);
 
         Self { editor, session }
     }
@@ -27,7 +24,7 @@ impl Repl {
     pub fn run(&mut self) -> Result<(), CommandError> {
         println!("{}", "Welcome to Theater Studio CLI!".bright_green());
         println!("Type {} for usage information.", "help".bright_blue());
-        
+
         loop {
             // Display the prompt and get user input
             let prompt = display::print_prompt();
@@ -97,7 +94,7 @@ impl Repl {
                 );
                 Ok(false)
             }
-            
+
             // Code Commands
             Command::Change(description) => {
                 self.session.submit_change(&description)?;
@@ -107,7 +104,7 @@ impl Repl {
                 self.session.build()?;
                 Ok(false)
             }
-            
+
             // Actor Commands
             Command::StartActor => {
                 self.session.start_actor()?;
@@ -128,7 +125,7 @@ impl Repl {
                 println!("=================\n");
                 Ok(false)
             }
-            
+
             // Interaction Commands
             Command::Message(content) => {
                 let response = self.session.send_message(&content)?;
@@ -141,15 +138,13 @@ impl Repl {
                 Ok(false)
             }
             Command::Http { method, path, data } => {
-                let response = self.session.send_http_request(
-                    &method,
-                    &path,
-                    data.as_deref(),
-                )?;
+                let response = self
+                    .session
+                    .send_http_request(&method, &path, data.as_deref())?;
                 println!("Response: {}", response);
                 Ok(false)
             }
-            
+
             // Utility Commands
             Command::Help => {
                 println!("{}", Command::get_help_text());
@@ -169,7 +164,7 @@ impl Repl {
                 }
                 Ok(true)
             }
-            
+
             // Invalid command
             Command::Invalid(message) => {
                 display::print_error(&format!("Invalid command: {}", message));
