@@ -70,7 +70,7 @@ impl Session {
                 spinner.finish_with_message("Theater server started");
             }
             Err(e) => {
-                spinner.finish_with_message(&format!("Failed to start Theater server: {}", e));
+                spinner.finish_with_message(format!("Failed to start Theater server: {}", e));
                 return Err(CommandError::Session(format!("Failed to start server: {}", e)));
             }
         }
@@ -79,7 +79,7 @@ impl Session {
         let spinner = display::create_spinner("Starting manager actor...");
         
         // Generate a unique ID for this session
-        let session_id = Uuid::new_v4().to_string();
+        let _session_id = Uuid::new_v4().to_string();
 
         let output = Command::new(&self.info.theater_path)
             .arg("start")
@@ -108,24 +108,24 @@ impl Session {
                     };
 
                     if let Some(id) = actor_id {
-                        self.info.manager_actor_id = Some(id);
-                        self.info.running = true;
-                        spinner.finish_with_message(&format!("Manager actor started with ID: {}", self.info.manager_actor_id.as_ref().unwrap()));
+                    self.info.manager_actor_id = Some(id);
+                    self.info.running = true;
+                    spinner.finish_with_message(format!("Manager actor started with ID: {}", self.info.manager_actor_id.as_ref().unwrap()));
                     } else {
-                        spinner.finish_with_message("Manager actor started but couldn't extract ID");
-                        display::print_warning("Could not extract manager actor ID from output");
-                        // Since we don't have the ID, we'll use a placeholder
-                        self.info.manager_actor_id = Some("unknown".to_string());
-                        self.info.running = true;
+                            spinner.finish_with_message("Manager actor started but couldn't extract ID");
+                            display::print_warning("Could not extract manager actor ID from output");
+                            // Since we don't have the ID, we'll use a placeholder
+                            self.info.manager_actor_id = Some("unknown".to_string());
+                            self.info.running = true;
                     }
                 } else {
                     let error = String::from_utf8_lossy(&output.stderr);
-                    spinner.finish_with_message(&format!("Failed to start manager actor: {}", error));
+                    spinner.finish_with_message(format!("Failed to start manager actor: {}", error));
                     return Err(CommandError::Session(format!("Failed to start manager actor: {}", error)));
                 }
             }
             Err(e) => {
-                spinner.finish_with_message(&format!("Failed to start manager actor: {}", e));
+                spinner.finish_with_message(format!("Failed to start manager actor: {}", e));
                 return Err(CommandError::Session(format!("Failed to start manager actor: {}", e)));
             }
         }
@@ -158,13 +158,13 @@ impl Session {
                     if !output.status.success() {
                         let error = String::from_utf8_lossy(&output.stderr);
                         let error_msg = format!("Failed to stop manager actor: {}", error);
-                        spinner.finish_with_message(&error_msg);
+                        spinner.finish_with_message(error_msg);
                         display::print_warning(&format!("Failed to stop manager actor: {}", error));
                     }
                 }
                 Err(e) => {
                     let error_msg = format!("Failed to stop manager actor: {}", e);
-                    spinner.finish_with_message(&error_msg);
+                    spinner.finish_with_message(error_msg);
                     display::print_warning(&format!("Failed to stop manager actor: {}", e));
                 }
             }
@@ -179,7 +179,7 @@ impl Session {
                 }
                 Err(e) => {
                     let error_msg = format!("Failed to stop Theater server: {}", e);
-                    spinner.finish_with_message(&error_msg);
+                    spinner.finish_with_message(error_msg);
                     display::print_warning(&format!("Failed to stop Theater server: {}", e));
                 }
             }
@@ -208,7 +208,7 @@ impl Session {
             }
             Err(e) => {
                 let error_msg = format!("Build failed: {}", e);
-                spinner.finish_with_message(&error_msg);
+                spinner.finish_with_message(error_msg);
                 self.info.build_status = "Failed".to_string();
                 Err(e)
             }
@@ -230,7 +230,7 @@ impl Session {
             }
             Err(e) => {
                 let error_msg = format!("Failed to submit change: {}", e);
-                spinner.finish_with_message(&error_msg);
+                spinner.finish_with_message(error_msg);
                 Err(e)
             }
         }
@@ -253,7 +253,7 @@ impl Session {
             }
             Err(e) => {
                 let error_msg = format!("Failed to start actor: {}", e);
-                spinner.finish_with_message(&error_msg);
+                spinner.finish_with_message(error_msg);
                 Err(e)
             }
         }
@@ -279,7 +279,7 @@ impl Session {
             }
             Err(e) => {
                 let error_msg = format!("Failed to stop actor: {}", e);
-                spinner.finish_with_message(&error_msg);
+                spinner.finish_with_message(error_msg);
                 Err(e)
             }
         }

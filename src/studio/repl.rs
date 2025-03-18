@@ -1,5 +1,5 @@
 use rustyline::error::ReadlineError;
-use rustyline::Editor as DefaultEditor;
+use rustyline::{Editor, DefaultHelper};
 use std::io::{self, Write};
 use colored::Colorize;
 
@@ -8,13 +8,13 @@ use crate::display;
 use crate::session::Session;
 
 pub struct Repl {
-    editor: DefaultEditor,
+    editor: Editor<DefaultHelper>,
     session: Session,
 }
 
 impl Repl {
     pub fn new(args: Args) -> Self {
-        let editor = DefaultEditor::new().expect("Failed to create line editor");
+        let editor = Editor::<DefaultHelper>::new().expect("Failed to create line editor");
         let session = Session::new(
             args.theater_path.clone(),
             args.host.clone(),
