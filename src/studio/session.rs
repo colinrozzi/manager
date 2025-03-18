@@ -353,26 +353,15 @@ impl Session {
                 .map_err(|e| CommandError::Communication(format!("Failed to serialize action: {}", e)))?;
 
             // Create a command to send the message to the actor
-            let mut child = Command::new(&self.info.theater_path)
+            // Include the JSON as a command-line argument instead of writing to stdin
+            let output = Command::new(&self.info.theater_path)
                 .arg("message")
                 .arg(manager_id)
-                .stdin(Stdio::piped())
+                .arg(&action_json)  // Pass the JSON message as an argument
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
-                .spawn()
-                .map_err(|e| CommandError::Communication(format!("Failed to spawn command: {}", e)))?;
-
-            // Write the action JSON to the stdin of the command
-            if let Some(stdin) = child.stdin.as_mut() {
-                stdin.write_all(action_json.as_bytes())
-                    .map_err(|e| CommandError::Communication(format!("Failed to write to stdin: {}", e)))?;
-            } else {
-                return Err(CommandError::Communication("Failed to open stdin".to_string()));
-            }
-
-            // Wait for the command to complete and get its output
-            let output = child.wait_with_output()
-                .map_err(|e| CommandError::Communication(format!("Failed to wait for command: {}", e)))?;
+                .output() // Use output() instead of spawn() + wait_with_output()
+                .map_err(|e| CommandError::Communication(format!("Failed to execute command: {}", e)))?;
 
             if output.status.success() {
                 let response = String::from_utf8_lossy(&output.stdout).to_string();
