@@ -1,6 +1,7 @@
 use rustyline::error::ReadlineError;
-use rustyline::DefaultEditor;
+use rustyline::Editor as DefaultEditor;
 use std::io::{self, Write};
+use colored::Colorize;
 
 use crate::commands::{Args, Command, CommandError};
 use crate::display;

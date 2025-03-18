@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::time::Duration;
-use std::{thread, time};
+use std::thread;
 use uuid::Uuid;
 
 use crate::commands::CommandError;
@@ -141,7 +141,7 @@ impl Session {
         let spinner = display::create_spinner("Stopping actors...");
 
         // First try to stop the child actor if it's running
-        if let Some(child_id) = &self.info.child_actor_id {
+        if let Some(_child_id) = &self.info.child_actor_id {
             let _ = self.send_action(Action::Stop);
             self.info.child_actor_id = None;
         }
@@ -157,12 +157,14 @@ impl Session {
                 Ok(output) => {
                     if !output.status.success() {
                         let error = String::from_utf8_lossy(&output.stderr);
-                        spinner.finish_with_message(&format!("Failed to stop manager actor: {}", error));
+                        let error_msg = format!("Failed to stop manager actor: {}", error);
+                        spinner.finish_with_message(&error_msg);
                         display::print_warning(&format!("Failed to stop manager actor: {}", error));
                     }
                 }
                 Err(e) => {
-                    spinner.finish_with_message(&format!("Failed to stop manager actor: {}", e));
+                    let error_msg = format!("Failed to stop manager actor: {}", e);
+                    spinner.finish_with_message(&error_msg);
                     display::print_warning(&format!("Failed to stop manager actor: {}", e));
                 }
             }
@@ -176,7 +178,8 @@ impl Session {
                     spinner.finish_with_message("Theater server stopped");
                 }
                 Err(e) => {
-                    spinner.finish_with_message(&format!("Failed to stop Theater server: {}", e));
+                    let error_msg = format!("Failed to stop Theater server: {}", e);
+                    spinner.finish_with_message(&error_msg);
                     display::print_warning(&format!("Failed to stop Theater server: {}", e));
                 }
             }
@@ -204,7 +207,8 @@ impl Session {
                 Ok(())
             }
             Err(e) => {
-                spinner.finish_with_message(&format!("Build failed: {}", e));
+                let error_msg = format!("Build failed: {}", e);
+                spinner.finish_with_message(&error_msg);
                 self.info.build_status = "Failed".to_string();
                 Err(e)
             }
@@ -225,7 +229,8 @@ impl Session {
                 Ok(())
             }
             Err(e) => {
-                spinner.finish_with_message(&format!("Failed to submit change: {}", e));
+                let error_msg = format!("Failed to submit change: {}", e);
+                spinner.finish_with_message(&error_msg);
                 Err(e)
             }
         }
@@ -247,7 +252,8 @@ impl Session {
                 Ok(())
             }
             Err(e) => {
-                spinner.finish_with_message(&format!("Failed to start actor: {}", e));
+                let error_msg = format!("Failed to start actor: {}", e);
+                spinner.finish_with_message(&error_msg);
                 Err(e)
             }
         }
@@ -272,7 +278,8 @@ impl Session {
                 Ok(())
             }
             Err(e) => {
-                spinner.finish_with_message(&format!("Failed to stop actor: {}", e));
+                let error_msg = format!("Failed to stop actor: {}", e);
+                spinner.finish_with_message(&error_msg);
                 Err(e)
             }
         }
@@ -324,7 +331,7 @@ impl Session {
         Ok("Actor state: running".to_string())
     }
 
-    pub fn send_http_request(&self, method: &str, path: &str, data: Option<&str>) -> Result<String, CommandError> {
+    pub fn send_http_request(&self, method: &str, path: &str, _data: Option<&str>) -> Result<String, CommandError> {
         if !self.info.running {
             return Err(CommandError::Session("No session running".to_string()));
         }

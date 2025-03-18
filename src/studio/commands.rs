@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 

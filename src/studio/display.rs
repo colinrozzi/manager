@@ -1,4 +1,4 @@
-use colored::*;
+use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 use serde_json::Value;
 use std::time::Duration;
