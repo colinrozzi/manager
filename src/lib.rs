@@ -49,7 +49,6 @@ enum Action {
 /// Result of a get info operation
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InfoResult {
-    pub name: String,
     pub head_hash: String,
     pub store_id: String,
 }
@@ -197,15 +196,17 @@ config = {}
                 let build_actor_id =
                     spawn("/Users/colinrozzi/work/actors/build-actor/actor.toml", None)
                         .expect("Failed to spawn build actor");
-                log(&format!("Build actor ID: {}", build_actor_id));
-
                 log(&format!("Build actor ID: {}", build_actor_id.clone()));
 
                 let runtime_info_value: Value =
                     serde_json::from_slice::<Value>(&runtime_info_response)
                         .expect("Failed to parse runtime info");
 
+                log(&format!("Runtime info value: {:?}", runtime_info_value));
+
                 let runtime_info = runtime_info_value.get("data").unwrap();
+
+                log(&format!("Runtime info: {:?}", runtime_info));
 
                 let cur_info = serde_json::from_value::<InfoResult>(runtime_info.clone())
                     .expect("Failed to parse programmer actor info");
