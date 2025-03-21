@@ -28,26 +28,9 @@ The manager actor provides:
 - State management and persistence
 - Real-time progress streaming using channels
 
-## Communication Methods
+## Communication Method
 
-The manager actor supports two communication methods:
-
-### 1. Request/Response API
-
-You can interact with the manager actor using the following actions:
-
-- `Start` - Start a child actor
-- `Stop` - Stop a running child actor
-- `Build` - Build the current code
-- `Change` - Submit code changes to the programmer actor
-
-Example:
-```bash
-# Send a build request to the manager actor
-theater message manager '{"action":"Build"}'
-```
-
-### 2. Channel-Based Communication (Recommended)
+The manager actor uses a channel-based communication protocol for real-time progress updates and operation coordination:
 
 For real-time progress updates, use the channel-based communication:
 
@@ -135,7 +118,6 @@ cargo run --bin theater-studio
 - `logs` - Show actor logs
 
 #### Interaction Commands
-- `message <content>` - Send a message to the running actor
 - `state` - Display the actor's current state
 - `http <method> <path> [data]` - Send HTTP request to actor
 

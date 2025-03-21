@@ -20,7 +20,7 @@ use operations::{
     generate_operation_id, get_current_time, handle_build_command, handle_change_command,
     send_status_update,
 };
-use state::{Action, AppState, InitData, OperationStatus};
+use state::{AppState, InitData, OperationStatus};
 
 use serde_json::{json, Value};
 
@@ -73,168 +73,19 @@ impl Guest for Actor {
 impl MessageServerClient for Actor {
     fn handle_send(
         state: Option<Vec<u8>>,
-        params: (Vec<u8>,),
+        _params: (Vec<u8>,),
     ) -> Result<(Option<Vec<u8>>,), String> {
         log("Handling send message");
-        let (data,) = params;
-
-        // Parse the current state
-        let state_bytes = state.unwrap_or_default();
-        let _app_state: AppState = if !state_bytes.is_empty() {
-            serde_json::from_slice(&state_bytes).map_err(|e| e.to_string())?
-        } else {
-            Err("No state found".to_string())?
-        };
-
-        // Try to parse the message as a string
-        if let Ok(message) = String::from_utf8(data.clone()) {
-            log(&format!("Received message: {}", message));
-        }
-
-        // Save the updated state
-        Ok((Some(state_bytes),))
+        Ok((state,))
     }
 
     fn handle_request(
-        state: Option<Vec<u8>>,
-        params: (Vec<u8>,),
+        state_bytes: Option<Vec<u8>>,
+        _params: (Vec<u8>,),
     ) -> Result<(Option<Vec<u8>>, (Vec<u8>,)), String> {
         log("Handling request message");
-        let (data,) = params;
-
-        // Parse the current state
-        let state_bytes = state.unwrap_or_default();
-        let mut app_state: AppState = if !state_bytes.is_empty() {
-            serde_json::from_slice(&state_bytes).map_err(|e| e.to_string())?
-        } else {
-            Err("No state found".to_string())?
-        };
-
-        let child_manifest = r#"
-name = "child"
-version = "0.1.0"
-description = "An HTTP server Theater actor"
-component_path = "store://44768743-9232-43de-9819-47c210588b2b/wasm"
-
-[interface]
-implements = "ntwk:theater/actor"
-requires = []
-
-[[handlers]]
-type = "runtime"
-config = {}
-
-[[handlers]]
-type = "http-framework"
-config = {}
-        "#;
-
-        let action: Action = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
-
-        // If we have a frontend channel, we should recommend using it
-        if app_state.frontend_channel_id.is_some() {
-            log("Warning: Using request/response while a frontend channel is active. Channel-based operations provide better progress updates.");
-        }
-
-        let response = match action {
-            Action::Start => {
-                let child_id = spawn(child_manifest, None).map_err(|e| e.to_string())?;
-                log(&format!("Spawned child actor with ID: {}", child_id));
-                app_state.child_id = Some(child_id);
-                "Started child actor".as_bytes().to_vec()
-            }
-            Action::Stop => {
-                if let Some(child_id) = app_state.child_id.take() {
-                    log(&format!("Stopping child actor with ID: {}", child_id));
-                    stop_child(&child_id).map_err(|e| e.to_string())?;
-                    app_state.child_id = None;
-                    "Stopped child actor".as_bytes().to_vec()
-                } else {
-                    "No child actor to stop".as_bytes().to_vec()
-                }
-            }
-            Action::Build => {
-                let runtime_info_response = request(
-                    &app_state.runtime_content_fs_actor_id,
-                    &serde_json::to_vec(&json!({"action": "get-info", "params": []})).unwrap(),
-                )
-                .expect("Failed to get programmer actor info");
-
-                log(&format!(
-                    "Received runtime info: {}",
-                    String::from_utf8(runtime_info_response.clone()).unwrap()
-                ));
-
-                let build_actor_id =
-                    spawn("/Users/colinrozzi/work/actors/build-actor/actor.toml", None)
-                        .expect("Failed to spawn build actor");
-                log(&format!("Build actor ID: {}", build_actor_id.clone()));
-
-                let runtime_info_value: Value =
-                    serde_json::from_slice::<Value>(&runtime_info_response)
-                        .expect("Failed to parse runtime info");
-
-                log(&format!("Runtime info value: {:?}", runtime_info_value));
-
-                let runtime_info = runtime_info_value.get("data").unwrap();
-
-                log(&format!("Runtime info: {:?}", runtime_info));
-
-                let cur_info = serde_json::from_value::<state::InfoResult>(runtime_info.clone())
-                    .expect("Failed to parse programmer actor info");
-                log(&format!("Programmer actor response: {:?}", cur_info));
-
-                let build_state = json!({
-                    "fs_hash": cur_info.head_hash,
-                    "store_id": cur_info.store_id,
-                    "build_store_id": app_state.build_store_id,
-                });
-                let result = request(&build_actor_id, &serde_json::to_vec(&build_state).unwrap())
-                    .map_err(|e| e.to_string())?;
-                log(&format!(
-                    "Build actor response: {}",
-                    String::from_utf8(result.clone()).unwrap()
-                ));
-
-                let result: state::BuildOutput =
-                    serde_json::from_slice(&result).map_err(|e| e.to_string())?;
-                log(&format!("Build output: {:?}", result));
-
-                let bytes = store::get_by_label(&app_state.build_store_id, "wasm")
-                    .map_err(|e| e.to_string())?;
-
-                log(&format!("Wasm bytes: {:?}", bytes));
-
-                stop_child(&build_actor_id).map_err(|e| e.to_string())?;
-
-                "Built".as_bytes().to_vec()
-            }
-            Action::Change(req) => {
-                log(&format!("Received change request: {}", req));
-
-                let result = request(
-                    &app_state.programmer_actor_id,
-                    &serde_json::to_vec(&json!({"change": req})).unwrap(),
-                )
-                .expect("Failed to send change request");
-
-                log(&format!(
-                    "Received programmer actor response: {}",
-                    String::from_utf8(result.clone()).unwrap()
-                ));
-
-                "Changed".as_bytes().to_vec()
-            }
-        };
-
-        // Save the updated state
-        let updated_state_bytes = serde_json::to_vec(&app_state).map_err(|e| e.to_string())?;
-        let updated_state = Some(updated_state_bytes);
-
-        Ok((updated_state, (response,)))
+        Ok((state_bytes, (vec![],)))
     }
-
-    // Channel handlers
 
     fn handle_channel_open(
         state: Option<Vec<u8>>,
@@ -280,7 +131,7 @@ config = {}
                     Some(state_bytes),
                     (ChannelAccept {
                         accepted: true,
-                        message: Some("Connected to manager actor".as_bytes().to_vec()),
+                        message: Some("Connected to manager actor. Using channel-based communication for all operations.".as_bytes().to_vec()),
                     },),
                 ));
             }
@@ -323,6 +174,16 @@ config = {}
             if app_state.frontend_channel_id.is_none() {
                 log(&format!("Setting frontend channel ID: {}", channel_id));
                 app_state.frontend_channel_id = Some(channel_id.clone());
+
+                // Send welcome message
+                let welcome_msg = FrontendMessage::Log {
+                    level: "info".to_string(),
+                    message: "Connected to manager actor. Using channel-based communication for all operations.".to_string(),
+                };
+
+                if let Ok(msg_bytes) = serde_json::to_vec(&welcome_msg) {
+                    let _ = send_on_channel(&channel_id, &msg_bytes);
+                }
 
                 // Send initial status update
                 send_status_update(&app_state, &channel_id)?;

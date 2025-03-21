@@ -68,14 +68,7 @@ pub struct InfoResult {
     pub store_id: String,
 }
 
-// Legacy action enum for request/response API
-#[derive(Serialize, Deserialize)]
-pub enum Action {
-    Start,
-    Stop,
-    Build,
-    Change(String),
-}
+// Removed the legacy Action enum as we've migrated to channel-only communication
 
 // Helper to create an initial AppState
 impl AppState {
