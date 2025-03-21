@@ -42,13 +42,13 @@ pub fn handle_change_command(
             log(&error_msg);
             
             // Send error to frontend
-            let error_msg = FrontendMessage::OperationCompleted {
+            let frontend_msg = FrontendMessage::OperationCompleted {
                 operation_id: operation_id.clone(),
                 success: false,
                 message: error_msg.clone(),
             };
             
-            if let Ok(msg_bytes) = serde_json::to_vec(&error_msg) {
+            if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
                 let _ = send_on_channel(frontend_channel_id, &msg_bytes);
             }
             
@@ -64,13 +64,13 @@ pub fn handle_change_command(
             log(&error_msg);
             
             // Send error to frontend
-            let error_msg = FrontendMessage::OperationCompleted {
+            let frontend_msg = FrontendMessage::OperationCompleted {
                 operation_id: operation_id.clone(),
                 success: false,
                 message: error_msg.clone(),
             };
             
-            if let Ok(msg_bytes) = serde_json::to_vec(&error_msg) {
+            if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
                 let _ = send_on_channel(frontend_channel_id, &msg_bytes);
             }
             
@@ -110,13 +110,13 @@ pub fn handle_change_command(
             log(&error_msg);
             
             // Send error to frontend
-            let error_msg = FrontendMessage::OperationCompleted {
+            let frontend_msg = FrontendMessage::OperationCompleted {
                 operation_id: operation_id.clone(),
                 success: false,
                 message: error_msg.clone(),
             };
             
-            if let Ok(msg_bytes) = serde_json::to_vec(&error_msg) {
+            if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
                 let _ = send_on_channel(frontend_channel_id, &msg_bytes);
             }
             
@@ -134,13 +134,13 @@ pub fn handle_change_command(
         log(&error_msg);
         
         // Send error to frontend
-        let error_msg = FrontendMessage::OperationCompleted {
+        let frontend_msg = FrontendMessage::OperationCompleted {
             operation_id: operation_id.clone(),
             success: false,
             message: error_msg.clone(),
         };
         
-        if let Ok(msg_bytes) = serde_json::to_vec(&error_msg) {
+        if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
             let _ = send_on_channel(frontend_channel_id, &msg_bytes);
         }
         

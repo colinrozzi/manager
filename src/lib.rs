@@ -245,7 +245,7 @@ config = {}
 
         // Parse the current state
         let state_bytes = state.unwrap_or_default();
-        let app_state: AppState = if !state_bytes.is_empty() {
+        let _app_state: AppState = if !state_bytes.is_empty() {
             serde_json::from_slice(&state_bytes).map_err(|e| e.to_string())?
         } else {
             Err("No state found".to_string())?
