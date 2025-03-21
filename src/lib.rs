@@ -261,6 +261,47 @@ config = {}
 
         Ok((updated_state, (response,)))
     }
+
+    fn handle_channel_open(
+        state: Option<bindings::exports::ntwk::theater::message_server_client::Json>,
+        params: (bindings::exports::ntwk::theater::message_server_client::Json,),
+    ) -> Result<
+        (
+            Option<bindings::exports::ntwk::theater::message_server_client::Json>,
+            (bindings::exports::ntwk::theater::message_server_client::ChannelAccept,),
+        ),
+        String,
+    > {
+        Ok((
+            state,
+            (
+                bindings::exports::ntwk::theater::message_server_client::ChannelAccept {
+                    accepted: true,
+                    message: None,
+                },
+            ),
+        ))
+    }
+
+    fn handle_channel_close(
+        state: Option<bindings::exports::ntwk::theater::message_server_client::Json>,
+        params: (String,),
+    ) -> Result<(Option<bindings::exports::ntwk::theater::message_server_client::Json>,), String>
+    {
+        Ok((state,))
+    }
+
+    fn handle_channel_message(
+        state: Option<bindings::exports::ntwk::theater::message_server_client::Json>,
+        params: (
+            String,
+            bindings::exports::ntwk::theater::message_server_client::Json,
+        ),
+    ) -> Result<(Option<bindings::exports::ntwk::theater::message_server_client::Json>,), String>
+    {
+        log("runtime-content-fs: Received channel message");
+        Ok((state,))
+    }
 }
 
 bindings::export!(Actor with_types_in bindings);
