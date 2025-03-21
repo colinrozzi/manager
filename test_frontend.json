@@ -1,0 +1,5 @@
+{
+  "client_type": "frontend",
+  "version": "1.0",
+  "capabilities": ["streaming", "build", "change"]
+}

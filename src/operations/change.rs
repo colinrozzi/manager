@@ -10,7 +10,7 @@ use serde_json::json;
 pub fn handle_change_command(
     app_state: &mut AppState, 
     description: String, 
-    frontend_channel_id: &str
+    frontend_channel_id: &String
 ) -> Result<(), String> {
     log(&format!("Processing ChangeRequest command: {}", description));
     
@@ -45,14 +45,14 @@ pub fn handle_change_command(
             let error_msg = FrontendMessage::OperationCompleted {
                 operation_id: operation_id.clone(),
                 success: false,
-                message: error_msg,
+                message: error_msg.clone(),
             };
             
             if let Ok(msg_bytes) = serde_json::to_vec(&error_msg) {
                 let _ = send_on_channel(frontend_channel_id, &msg_bytes);
             }
             
-            return Err(format!("Failed to serialize channel init: {}", e));
+            return Err(error_msg);
         }
     };
     
@@ -67,14 +67,14 @@ pub fn handle_change_command(
             let error_msg = FrontendMessage::OperationCompleted {
                 operation_id: operation_id.clone(),
                 success: false,
-                message: error_msg,
+                message: error_msg.clone(),
             };
             
             if let Ok(msg_bytes) = serde_json::to_vec(&error_msg) {
                 let _ = send_on_channel(frontend_channel_id, &msg_bytes);
             }
             
-            return Err(format!("Failed to open channel to programmer actor: {}", e));
+            return Err(error_msg);
         }
     };
     
@@ -113,7 +113,7 @@ pub fn handle_change_command(
             let error_msg = FrontendMessage::OperationCompleted {
                 operation_id: operation_id.clone(),
                 success: false,
-                message: error_msg,
+                message: error_msg.clone(),
             };
             
             if let Ok(msg_bytes) = serde_json::to_vec(&error_msg) {
@@ -124,7 +124,7 @@ pub fn handle_change_command(
             app_state.actor_channels.remove(&operation_id);
             app_state.active_operations.remove(&operation_id);
             
-            return Err(format!("Failed to serialize change command: {}", e));
+            return Err(error_msg);
         }
     };
     
@@ -137,7 +137,7 @@ pub fn handle_change_command(
         let error_msg = FrontendMessage::OperationCompleted {
             operation_id: operation_id.clone(),
             success: false,
-            message: error_msg,
+            message: error_msg.clone(),
         };
         
         if let Ok(msg_bytes) = serde_json::to_vec(&error_msg) {
@@ -148,7 +148,7 @@ pub fn handle_change_command(
         app_state.actor_channels.remove(&operation_id);
         app_state.active_operations.remove(&operation_id);
         
-        return Err(format!("Failed to send change command: {}", e));
+        return Err(error_msg);
     }
     
     log(&format!("Sent change command to programmer actor"));

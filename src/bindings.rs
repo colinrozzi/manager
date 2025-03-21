@@ -170,6 +170,117 @@ pub mod ntwk {
             }
         }
         #[allow(dead_code, clippy::all)]
+        pub mod timing {
+            #[used]
+            #[doc(hidden)]
+            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
+            use super::super::super::_rt;
+            #[allow(unused_unsafe, clippy::all)]
+            /// Returns the current time in milliseconds since the UNIX epoch
+            pub fn now() -> u64 {
+                unsafe {
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "ntwk:theater/timing")]
+                    extern "C" {
+                        #[link_name = "now"]
+                        fn wit_import() -> i64;
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import() -> i64 {
+                        unreachable!()
+                    }
+                    let ret = wit_import();
+                    ret as u64
+                }
+            }
+            #[allow(unused_unsafe, clippy::all)]
+            /// Pauses execution for the specified number of milliseconds
+            pub fn sleep(duration: u64) -> Result<(), _rt::String> {
+                unsafe {
+                    #[repr(align(4))]
+                    struct RetArea([::core::mem::MaybeUninit<u8>; 12]);
+                    let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 12]);
+                    let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "ntwk:theater/timing")]
+                    extern "C" {
+                        #[link_name = "sleep"]
+                        fn wit_import(_: i64, _: *mut u8);
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import(_: i64, _: *mut u8) {
+                        unreachable!()
+                    }
+                    wit_import(_rt::as_i64(&duration), ptr0);
+                    let l1 = i32::from(*ptr0.add(0).cast::<u8>());
+                    match l1 {
+                        0 => {
+                            let e = ();
+                            Ok(e)
+                        }
+                        1 => {
+                            let e = {
+                                let l2 = *ptr0.add(4).cast::<*mut u8>();
+                                let l3 = *ptr0.add(8).cast::<usize>();
+                                let len4 = l3;
+                                let bytes4 = _rt::Vec::from_raw_parts(
+                                    l2.cast(),
+                                    len4,
+                                    len4,
+                                );
+                                _rt::string_lift(bytes4)
+                            };
+                            Err(e)
+                        }
+                        _ => _rt::invalid_enum_discriminant(),
+                    }
+                }
+            }
+            #[allow(unused_unsafe, clippy::all)]
+            /// Pauses execution until the specified timestamp (milliseconds since UNIX epoch)
+            pub fn deadline(timestamp: u64) -> Result<(), _rt::String> {
+                unsafe {
+                    #[repr(align(4))]
+                    struct RetArea([::core::mem::MaybeUninit<u8>; 12]);
+                    let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 12]);
+                    let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "ntwk:theater/timing")]
+                    extern "C" {
+                        #[link_name = "deadline"]
+                        fn wit_import(_: i64, _: *mut u8);
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import(_: i64, _: *mut u8) {
+                        unreachable!()
+                    }
+                    wit_import(_rt::as_i64(&timestamp), ptr0);
+                    let l1 = i32::from(*ptr0.add(0).cast::<u8>());
+                    match l1 {
+                        0 => {
+                            let e = ();
+                            Ok(e)
+                        }
+                        1 => {
+                            let e = {
+                                let l2 = *ptr0.add(4).cast::<*mut u8>();
+                                let l3 = *ptr0.add(8).cast::<usize>();
+                                let len4 = l3;
+                                let bytes4 = _rt::Vec::from_raw_parts(
+                                    l2.cast(),
+                                    len4,
+                                    len4,
+                                );
+                                _rt::string_lift(bytes4)
+                            };
+                            Err(e)
+                        }
+                        _ => _rt::invalid_enum_discriminant(),
+                    }
+                }
+            }
+        }
+        #[allow(dead_code, clippy::all)]
         pub mod supervisor {
             #[used]
             #[doc(hidden)]
@@ -2754,6 +2865,29 @@ mod _rt {
         let layout = alloc::Layout::from_size_align_unchecked(size, align);
         alloc::dealloc(ptr, layout);
     }
+    pub fn as_i64<T: AsI64>(t: T) -> i64 {
+        t.as_i64()
+    }
+    pub trait AsI64 {
+        fn as_i64(self) -> i64;
+    }
+    impl<'a, T: Copy + AsI64> AsI64 for &'a T {
+        fn as_i64(self) -> i64 {
+            (*self).as_i64()
+        }
+    }
+    impl AsI64 for i64 {
+        #[inline]
+        fn as_i64(self) -> i64 {
+            self as i64
+        }
+    }
+    impl AsI64 for u64 {
+        #[inline]
+        fn as_i64(self) -> i64 {
+            self as i64
+        }
+    }
     pub unsafe fn bool_lift(val: u8) -> bool {
         if cfg!(debug_assertions) {
             match val {
@@ -2809,9 +2943,9 @@ pub(crate) use __export_hello_world_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.36.0:ntwk:theater:hello-world:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2305] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xff\x10\x01A\x02\x01\
-A\x15\x01B\x14\x01p}\x04\0\x04json\x03\0\0\x01p}\x01k\x02\x04\0\x05state\x03\0\x03\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2404] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xe2\x11\x01A\x02\x01\
+A\x17\x01B\x14\x01p}\x04\0\x04json\x03\0\0\x01p}\x01k\x02\x04\0\x05state\x03\0\x03\
 \x01s\x04\0\x08actor-id\x03\0\x05\x01s\x04\0\x0achannel-id\x03\0\x07\x01k\x01\x01\
 r\x02\x08accepted\x7f\x07message\x09\x04\0\x0echannel-accept\x03\0\x0a\x01kw\x01\
 r\x03\x0aevent-types\x06parent\x0c\x04data\x01\x04\0\x05event\x03\0\x0d\x01r\x02\
@@ -2820,52 +2954,54 @@ r\x03\x0aevent-types\x06parent\x0c\x04data\x01\x04\0\x05event\x03\0\x0d\x01r\x02
 son\x02\x03\0\0\x05chain\x02\x03\0\0\x08actor-id\x01B\x0a\x02\x03\x02\x01\x01\x04\
 \0\x04json\x03\0\0\x02\x03\x02\x01\x02\x04\0\x05chain\x03\0\x02\x02\x03\x02\x01\x03\
 \x04\0\x08actor-id\x03\0\x04\x01@\x01\x03msgs\x01\0\x04\0\x03log\x01\x06\x01@\0\0\
-\x03\x04\0\x09get-chain\x01\x07\x03\0\x14ntwk:theater/runtime\x05\x04\x01B\x17\x01\
-p}\x01k\0\x01r\x05\x04hash\0\x0bparent-hash\x01\x0aevent-types\x04data\0\x09time\
-stampw\x04\0\x0bchain-event\x03\0\x02\x01j\x01s\x01s\x01@\x02\x08manifests\x0ain\
-it-bytes\x01\0\x04\x04\0\x05spawn\x01\x05\x01@\x02\x08manifests\x0ainit-state\x01\
-\0\x04\x04\0\x06resume\x01\x06\x01ps\x01@\0\0\x07\x04\0\x0dlist-children\x01\x08\
-\x01j\0\x01s\x01@\x01\x08child-ids\0\x09\x04\0\x0astop-child\x01\x0a\x04\0\x0dre\
-start-child\x01\x0a\x01j\x01\x01\x01s\x01@\x01\x08child-ids\0\x0b\x04\0\x0fget-c\
-hild-state\x01\x0c\x01p\x03\x01j\x01\x0d\x01s\x01@\x01\x08child-ids\0\x0e\x04\0\x10\
-get-child-events\x01\x0f\x03\0\x17ntwk:theater/supervisor\x05\x05\x02\x03\0\0\x0a\
-channel-id\x01B\x13\x02\x03\x02\x01\x01\x04\0\x04json\x03\0\0\x02\x03\x02\x01\x03\
-\x04\0\x08actor-id\x03\0\x02\x02\x03\x02\x01\x06\x04\0\x0achannel-id\x03\0\x04\x01\
-j\0\x01s\x01@\x02\x08actor-id\x03\x03msg\x01\0\x06\x04\0\x04send\x01\x07\x01j\x01\
-\x01\x01s\x01@\x02\x08actor-id\x03\x03msg\x01\0\x08\x04\0\x07request\x01\x09\x01\
-j\x01\x05\x01s\x01@\x02\x08actor-id\x03\x0binitial-msg\x01\0\x0a\x04\0\x0copen-c\
-hannel\x01\x0b\x01@\x02\x0achannel-id\x05\x03msg\x01\0\x06\x04\0\x0fsend-on-chan\
-nel\x01\x0c\x01@\x01\x0achannel-id\x05\0\x06\x04\0\x0dclose-channel\x01\x0d\x03\0\
-\x20ntwk:theater/message-server-host\x05\x07\x01B(\x01r\x01\x04hashs\x04\0\x0bco\
-ntent-ref\x03\0\0\x01j\x01s\x01s\x01@\0\0\x02\x04\0\x03new\x01\x03\x01p}\x01j\x01\
-\x01\x01s\x01@\x02\x08store-ids\x07content\x04\0\x05\x04\0\x05store\x01\x06\x01j\
-\x01\x04\x01s\x01@\x02\x08store-ids\x0bcontent-ref\x01\0\x07\x04\0\x03get\x01\x08\
-\x01j\x01\x7f\x01s\x01@\x02\x08store-ids\x0bcontent-ref\x01\0\x09\x04\0\x06exist\
-s\x01\x0a\x01j\0\x01s\x01@\x03\x08store-ids\x05labels\x0bcontent-ref\x01\0\x0b\x04\
-\0\x05label\x01\x0c\x01k\x01\x01j\x01\x0d\x01s\x01@\x02\x08store-ids\x05labels\0\
-\x0e\x04\0\x0cget-by-label\x01\x0f\x01@\x02\x08store-ids\x05labels\0\x0b\x04\0\x0c\
-remove-label\x01\x10\x04\0\x11remove-from-label\x01\x0c\x01@\x03\x08store-ids\x05\
-labels\x07content\x04\0\x05\x04\0\x0estore-at-label\x01\x11\x04\0\x18replace-con\
-tent-at-label\x01\x11\x04\0\x10replace-at-label\x01\x0c\x01ps\x01j\x01\x12\x01s\x01\
-@\x01\x08store-ids\0\x13\x04\0\x0blist-labels\x01\x14\x01p\x01\x01j\x01\x15\x01s\
-\x01@\x01\x08store-ids\0\x16\x04\0\x10list-all-content\x01\x17\x01j\x01w\x01s\x01\
-@\x01\x08store-ids\0\x18\x04\0\x14calculate-total-size\x01\x19\x03\0\x12ntwk:the\
-ater/store\x05\x08\x02\x03\0\0\x05state\x01B\x07\x02\x03\x02\x01\x09\x04\0\x05st\
-ate\x03\0\0\x01o\x01s\x01o\x01\x01\x01j\x01\x03\x01s\x01@\x02\x05state\x01\x06pa\
-rams\x02\0\x04\x04\0\x04init\x01\x05\x04\0\x12ntwk:theater/actor\x05\x0a\x02\x03\
-\0\0\x05event\x02\x03\0\0\x0echannel-accept\x01B\x1d\x02\x03\x02\x01\x01\x04\0\x04\
-json\x03\0\0\x02\x03\x02\x01\x0b\x04\0\x05event\x03\0\x02\x02\x03\x02\x01\x06\x04\
-\0\x0achannel-id\x03\0\x04\x02\x03\x02\x01\x0c\x04\0\x0echannel-accept\x03\0\x06\
-\x01k\x01\x01o\x01\x01\x01o\x01\x08\x01j\x01\x0a\x01s\x01@\x02\x05state\x08\x06p\
-arams\x09\0\x0b\x04\0\x0bhandle-send\x01\x0c\x01o\x02\x08\x09\x01j\x01\x0d\x01s\x01\
-@\x02\x05state\x08\x06params\x09\0\x0e\x04\0\x0ehandle-request\x01\x0f\x01o\x01\x07\
-\x01o\x02\x08\x10\x01j\x01\x11\x01s\x01@\x02\x05state\x08\x06params\x09\0\x12\x04\
-\0\x13handle-channel-open\x01\x13\x01o\x02\x05\x01\x01@\x02\x05state\x08\x06para\
-ms\x14\0\x0b\x04\0\x16handle-channel-message\x01\x15\x01o\x01\x05\x01@\x02\x05st\
-ate\x08\x06params\x16\0\x0b\x04\0\x14handle-channel-close\x01\x17\x04\0\"ntwk:th\
-eater/message-server-client\x05\x0d\x04\0\x18ntwk:theater/hello-world\x04\0\x0b\x11\
-\x01\0\x0bhello-world\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-com\
-ponent\x070.220.1\x10wit-bindgen-rust\x060.36.0";
+\x03\x04\0\x09get-chain\x01\x07\x03\0\x14ntwk:theater/runtime\x05\x04\x01B\x07\x01\
+@\0\0w\x04\0\x03now\x01\0\x01j\0\x01s\x01@\x01\x08durationw\0\x01\x04\0\x05sleep\
+\x01\x02\x01@\x01\x09timestampw\0\x01\x04\0\x08deadline\x01\x03\x03\0\x13ntwk:th\
+eater/timing\x05\x05\x01B\x17\x01p}\x01k\0\x01r\x05\x04hash\0\x0bparent-hash\x01\
+\x0aevent-types\x04data\0\x09timestampw\x04\0\x0bchain-event\x03\0\x02\x01j\x01s\
+\x01s\x01@\x02\x08manifests\x0ainit-bytes\x01\0\x04\x04\0\x05spawn\x01\x05\x01@\x02\
+\x08manifests\x0ainit-state\x01\0\x04\x04\0\x06resume\x01\x06\x01ps\x01@\0\0\x07\
+\x04\0\x0dlist-children\x01\x08\x01j\0\x01s\x01@\x01\x08child-ids\0\x09\x04\0\x0a\
+stop-child\x01\x0a\x04\0\x0drestart-child\x01\x0a\x01j\x01\x01\x01s\x01@\x01\x08\
+child-ids\0\x0b\x04\0\x0fget-child-state\x01\x0c\x01p\x03\x01j\x01\x0d\x01s\x01@\
+\x01\x08child-ids\0\x0e\x04\0\x10get-child-events\x01\x0f\x03\0\x17ntwk:theater/\
+supervisor\x05\x06\x02\x03\0\0\x0achannel-id\x01B\x13\x02\x03\x02\x01\x01\x04\0\x04\
+json\x03\0\0\x02\x03\x02\x01\x03\x04\0\x08actor-id\x03\0\x02\x02\x03\x02\x01\x07\
+\x04\0\x0achannel-id\x03\0\x04\x01j\0\x01s\x01@\x02\x08actor-id\x03\x03msg\x01\0\
+\x06\x04\0\x04send\x01\x07\x01j\x01\x01\x01s\x01@\x02\x08actor-id\x03\x03msg\x01\
+\0\x08\x04\0\x07request\x01\x09\x01j\x01\x05\x01s\x01@\x02\x08actor-id\x03\x0bin\
+itial-msg\x01\0\x0a\x04\0\x0copen-channel\x01\x0b\x01@\x02\x0achannel-id\x05\x03\
+msg\x01\0\x06\x04\0\x0fsend-on-channel\x01\x0c\x01@\x01\x0achannel-id\x05\0\x06\x04\
+\0\x0dclose-channel\x01\x0d\x03\0\x20ntwk:theater/message-server-host\x05\x08\x01\
+B(\x01r\x01\x04hashs\x04\0\x0bcontent-ref\x03\0\0\x01j\x01s\x01s\x01@\0\0\x02\x04\
+\0\x03new\x01\x03\x01p}\x01j\x01\x01\x01s\x01@\x02\x08store-ids\x07content\x04\0\
+\x05\x04\0\x05store\x01\x06\x01j\x01\x04\x01s\x01@\x02\x08store-ids\x0bcontent-r\
+ef\x01\0\x07\x04\0\x03get\x01\x08\x01j\x01\x7f\x01s\x01@\x02\x08store-ids\x0bcon\
+tent-ref\x01\0\x09\x04\0\x06exists\x01\x0a\x01j\0\x01s\x01@\x03\x08store-ids\x05\
+labels\x0bcontent-ref\x01\0\x0b\x04\0\x05label\x01\x0c\x01k\x01\x01j\x01\x0d\x01\
+s\x01@\x02\x08store-ids\x05labels\0\x0e\x04\0\x0cget-by-label\x01\x0f\x01@\x02\x08\
+store-ids\x05labels\0\x0b\x04\0\x0cremove-label\x01\x10\x04\0\x11remove-from-lab\
+el\x01\x0c\x01@\x03\x08store-ids\x05labels\x07content\x04\0\x05\x04\0\x0estore-a\
+t-label\x01\x11\x04\0\x18replace-content-at-label\x01\x11\x04\0\x10replace-at-la\
+bel\x01\x0c\x01ps\x01j\x01\x12\x01s\x01@\x01\x08store-ids\0\x13\x04\0\x0blist-la\
+bels\x01\x14\x01p\x01\x01j\x01\x15\x01s\x01@\x01\x08store-ids\0\x16\x04\0\x10lis\
+t-all-content\x01\x17\x01j\x01w\x01s\x01@\x01\x08store-ids\0\x18\x04\0\x14calcul\
+ate-total-size\x01\x19\x03\0\x12ntwk:theater/store\x05\x09\x02\x03\0\0\x05state\x01\
+B\x07\x02\x03\x02\x01\x0a\x04\0\x05state\x03\0\0\x01o\x01s\x01o\x01\x01\x01j\x01\
+\x03\x01s\x01@\x02\x05state\x01\x06params\x02\0\x04\x04\0\x04init\x01\x05\x04\0\x12\
+ntwk:theater/actor\x05\x0b\x02\x03\0\0\x05event\x02\x03\0\0\x0echannel-accept\x01\
+B\x1d\x02\x03\x02\x01\x01\x04\0\x04json\x03\0\0\x02\x03\x02\x01\x0c\x04\0\x05eve\
+nt\x03\0\x02\x02\x03\x02\x01\x07\x04\0\x0achannel-id\x03\0\x04\x02\x03\x02\x01\x0d\
+\x04\0\x0echannel-accept\x03\0\x06\x01k\x01\x01o\x01\x01\x01o\x01\x08\x01j\x01\x0a\
+\x01s\x01@\x02\x05state\x08\x06params\x09\0\x0b\x04\0\x0bhandle-send\x01\x0c\x01\
+o\x02\x08\x09\x01j\x01\x0d\x01s\x01@\x02\x05state\x08\x06params\x09\0\x0e\x04\0\x0e\
+handle-request\x01\x0f\x01o\x01\x07\x01o\x02\x08\x10\x01j\x01\x11\x01s\x01@\x02\x05\
+state\x08\x06params\x09\0\x12\x04\0\x13handle-channel-open\x01\x13\x01o\x02\x05\x01\
+\x01@\x02\x05state\x08\x06params\x14\0\x0b\x04\0\x16handle-channel-message\x01\x15\
+\x01o\x01\x05\x01@\x02\x05state\x08\x06params\x16\0\x0b\x04\0\x14handle-channel-\
+close\x01\x17\x04\0\"ntwk:theater/message-server-client\x05\x0e\x04\0\x18ntwk:th\
+eater/hello-world\x04\0\x0b\x11\x01\0\x0bhello-world\x03\0\0\0G\x09producers\x01\
+\x0cprocessed-by\x02\x0dwit-component\x070.220.1\x10wit-bindgen-rust\x060.36.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

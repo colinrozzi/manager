@@ -21,7 +21,7 @@ pub enum FrontendMessage {
         child_running: bool,
         active_operations: Vec<OperationSummary>,
     },
-    
+
     // Operation messages
     OperationStarted {
         operation_id: String,
@@ -38,7 +38,7 @@ pub enum FrontendMessage {
         success: bool,
         message: String,
     },
-    
+
     // Actor events (forwarded from child actors)
     BuildEvent {
         operation_id: String,
@@ -52,13 +52,13 @@ pub enum FrontendMessage {
         message: String,
         details: Value,
     },
-    
+
     // Log messages
     Log {
         level: String,
         message: String,
     },
-    
+
     // Error messages
     Error {
         code: String,

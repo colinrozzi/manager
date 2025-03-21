@@ -5,6 +5,7 @@ world hello-world {
     export actor;
     export message-server-client;
 
+    import timing;
     import supervisor;
     import message-server-host;
     import store;
