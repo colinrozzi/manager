@@ -35,6 +35,11 @@ pub enum BuildActorMessage {
         wasm_path: Option<String>,
         wasm_hash: Option<String>,
         error: Option<String>,
+    },
+    
+    FileExtracted {
+        path: String,
+        size: usize,
     }
 }
 
@@ -46,6 +51,7 @@ impl From<&BuildActorMessage> for String {
             BuildActorMessage::CommandStarted { .. } => "CommandStarted".to_string(),
             BuildActorMessage::CommandOutput { .. } => "CommandOutput".to_string(), 
             BuildActorMessage::BuildComplete { .. } => "BuildComplete".to_string(),
+            BuildActorMessage::FileExtracted { .. } => "FileExtracted".to_string(),
         }
     }
 }
@@ -72,6 +78,9 @@ impl BuildActorMessage {
                 } else {
                     "Build failed".to_string()
                 }
+            },
+            BuildActorMessage::FileExtracted { path, size } => {
+                format!("Extracted file: {} ({} bytes)", path, size)
             }
         }
     }

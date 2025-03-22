@@ -140,6 +140,12 @@ pub fn handle_build_message(
                         "stderr": stderr
                     })
                 }
+                BuildActorMessage::FileExtracted { path, size } => {
+                    json!({
+                        "path": path,
+                        "size": size
+                    })
+                }
                 BuildActorMessage::BuildComplete {
                     success,
                     wasm_path,
