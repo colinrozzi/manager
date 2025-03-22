@@ -112,7 +112,7 @@ pub fn handle_build_message(
             let message = build_msg.get_message();
 
             // Create details based on message type
-            let details = match &build_msg {
+            let details = match build_msg {
                 BuildActorMessage::Log { level, .. } => {
                     json!({
                         "level": level
@@ -146,6 +146,37 @@ pub fn handle_build_message(
                     wasm_hash,
                     error,
                 } => {
+                    log(&format!(
+                        "Build completed with success: {:?}, wasm_path: {:?}, wasm_hash: {:?}, error: {:?}",
+                        success, wasm_path, wasm_hash, error
+                    ));
+                    // Update operation status
+                    if success {
+                        OperationStatus::Completed
+                    } else {
+                        OperationStatus::Failed
+                    };
+
+                    // Send completion message
+                    let completion_msg = FrontendMessage::OperationCompleted {
+                        operation_id: operation.operation_id.clone(),
+                        success,
+                        message: if success {
+                            "Build completed successfully".to_string()
+                        } else {
+                            "Build failed".to_string()
+                        },
+                    };
+
+                    if let Ok(msg_bytes) = serde_json::to_vec(&completion_msg) {
+                        let _ = send_on_channel(frontend_channel, &msg_bytes);
+                    }
+
+                    // Close the actor channel
+                    let _ = close_channel(&channel_id.to_string());
+
+                    // Remove from channels
+                    app_state.channels.remove(channel_id);
                     json!({
                         "success": success,
                         "wasm_path": wasm_path,
@@ -166,37 +197,6 @@ pub fn handle_build_message(
             // Send to frontend
             if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
                 let _ = send_on_channel(frontend_channel, &msg_bytes);
-            }
-
-            // Check for completion event
-            if let BuildActorMessage::BuildComplete { success, .. } = build_msg {
-                // Update operation status
-                operation.status = if success {
-                    OperationStatus::Completed
-                } else {
-                    OperationStatus::Failed
-                };
-
-                // Send completion message
-                let completion_msg = FrontendMessage::OperationCompleted {
-                    operation_id: operation.operation_id.clone(),
-                    success,
-                    message: if success {
-                        "Build completed successfully".to_string()
-                    } else {
-                        "Build failed".to_string()
-                    },
-                };
-
-                if let Ok(msg_bytes) = serde_json::to_vec(&completion_msg) {
-                    let _ = send_on_channel(frontend_channel, &msg_bytes);
-                }
-
-                // Close the actor channel
-                let _ = close_channel(&channel_id.to_string());
-
-                // Remove from channels
-                app_state.channels.remove(channel_id);
             }
 
             Ok(())

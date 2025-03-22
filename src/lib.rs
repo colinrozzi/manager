@@ -124,16 +124,6 @@ impl MessageServerClient for Actor {
                 // Accept the frontend channel connection
                 log("Accepting frontend channel connection");
 
-                // Register the frontend channel
-                let channel_id = open_message
-                    .get("channel_id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or_default()
-                    .to_string();
-                app_state
-                    .channels
-                    .insert(channel_id.clone(), ChannelType::Frontend);
-
                 return Ok((
                     Some(serde_json::to_vec(&app_state).map_err(|e| e.to_string())?),
                     (ChannelAccept {
@@ -181,11 +171,6 @@ impl MessageServerClient for Actor {
         match channel_type {
             // Frontend channel handling
             ChannelType::Frontend => {
-                // Handle frontend channel setup if needed
-                if app_state.frontend_channel_id.is_none() {
-                    handlers::handle_frontend_setup(&mut app_state, &channel_id)?;
-                }
-
                 // Handle frontend command
                 handlers::handle_frontend_message(&mut app_state, &channel_id, &message_data)?;
             }
@@ -212,6 +197,14 @@ impl MessageServerClient for Actor {
 
             // Unknown channel handling
             ChannelType::Unknown => {
+                // Handle frontend channel setup if needed
+                if app_state.frontend_channel_id.is_none() {
+                    handlers::handle_frontend_setup(&mut app_state, &channel_id)?;
+                    handlers::handle_frontend_message(&mut app_state, &channel_id, &message_data)?;
+                }
+
+                // Reject unknown channels
+                log(&format!("Unknown channel message: {}", channel_id));
                 handlers::handle_unknown_message(&mut app_state, &channel_id, &message_data)?;
             }
         }
