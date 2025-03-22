@@ -15,8 +15,8 @@ use crate::bindings::ntwk::theater::store;
 use crate::bindings::ntwk::theater::supervisor::{spawn, stop_child};
 use crate::bindings::ntwk::theater::types::State;
 
+use messaging::build::{parse_build_message, BuildActorMessage};
 use messaging::frontend::{FrontendCommand, FrontendMessage};
-use messaging::build::{BuildActorMessage, parse_build_message};
 use operations::{
     generate_operation_id, get_current_time, handle_build_command, handle_change_command,
     send_status_update,
@@ -254,37 +254,46 @@ impl MessageServerClient for Actor {
                                 match parse_build_message(&message_data) {
                                     Ok(build_msg) => {
                                         log(&format!("Received build message: {:?}", build_msg));
-                                        
+
                                         // Extract message details
                                         let event_type = String::from(&build_msg);
                                         let message = build_msg.get_message();
-                                        
+
                                         // Create details based on message type
                                         let details = match &build_msg {
                                             BuildActorMessage::Log { level, .. } => {
                                                 json!({
                                                     "level": level
                                                 })
-                                            },
-                                            BuildActorMessage::Progress { status, percent_complete, .. } => {
+                                            }
+                                            BuildActorMessage::Progress {
+                                                status,
+                                                percent_complete,
+                                                ..
+                                            } => {
                                                 json!({
                                                     "status": status,
                                                     "percent_complete": percent_complete
                                                 })
-                                            },
+                                            }
                                             BuildActorMessage::CommandStarted { command, args } => {
                                                 json!({
                                                     "command": command,
                                                     "args": args
                                                 })
-                                            },
+                                            }
                                             BuildActorMessage::CommandOutput { stdout, stderr } => {
                                                 json!({
                                                     "stdout": stdout,
                                                     "stderr": stderr
                                                 })
-                                            },
-                                            BuildActorMessage::BuildComplete { success, wasm_path, wasm_hash, error } => {
+                                            }
+                                            BuildActorMessage::BuildComplete {
+                                                success,
+                                                wasm_path,
+                                                wasm_hash,
+                                                error,
+                                            } => {
                                                 json!({
                                                     "success": success,
                                                     "wasm_path": wasm_path,
@@ -293,7 +302,7 @@ impl MessageServerClient for Actor {
                                                 })
                                             }
                                         };
-                                        
+
                                         // Create frontend message
                                         let frontend_msg = FrontendMessage::BuildEvent {
                                             operation_id: operation.operation_id.clone(),
@@ -301,14 +310,17 @@ impl MessageServerClient for Actor {
                                             message,
                                             details,
                                         };
-                                        
+
                                         // Send to frontend
                                         if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
                                             let _ = send_on_channel(frontend_channel, &msg_bytes);
                                         }
-                                        
+
                                         // Check for completion event
-                                        if let BuildActorMessage::BuildComplete { success, .. } = build_msg {
+                                        if let BuildActorMessage::BuildComplete {
+                                            success, ..
+                                        } = build_msg
+                                        {
                                             // Update operation status
                                             operation.status = if success {
                                                 OperationStatus::Completed
@@ -316,37 +328,43 @@ impl MessageServerClient for Actor {
                                                 OperationStatus::Failed
                                             };
                                             operation.end_time = Some(get_current_time());
-                                            
+
                                             // Send completion message
-                                            let completion_msg = FrontendMessage::OperationCompleted {
-                                                operation_id: operation.operation_id.clone(),
-                                                success,
-                                                message: if success {
-                                                    "Build completed successfully".to_string()
-                                                } else {
-                                                    "Build failed".to_string()
-                                                },
-                                            };
-                                            
-                                            if let Ok(msg_bytes) = serde_json::to_vec(&completion_msg) {
-                                                let _ = send_on_channel(frontend_channel, &msg_bytes);
+                                            let completion_msg =
+                                                FrontendMessage::OperationCompleted {
+                                                    operation_id: operation.operation_id.clone(),
+                                                    success,
+                                                    message: if success {
+                                                        "Build completed successfully".to_string()
+                                                    } else {
+                                                        "Build failed".to_string()
+                                                    },
+                                                };
+
+                                            if let Ok(msg_bytes) =
+                                                serde_json::to_vec(&completion_msg)
+                                            {
+                                                let _ =
+                                                    send_on_channel(frontend_channel, &msg_bytes);
                                             }
-                                            
+
                                             // Close the actor channel
                                             let _ = close_channel(&channel_id);
-                                            
+
                                             // Remove from active channels
                                             app_state.actor_channels.remove(&operation_id);
                                         }
-                                    },
+                                    }
                                     Err(e) => {
                                         // Failed to parse build message, try generic parsing
                                         log(&format!("Failed to parse build message: {}, falling back to generic parsing", e));
-                                        
+
                                         // Try to parse generically
-                                        if let Ok(value) = serde_json::from_slice::<Value>(&message_data) {
+                                        if let Ok(value) =
+                                            serde_json::from_slice::<Value>(&message_data)
+                                        {
                                             log(&format!("Received raw json: {}", value));
-                                            
+
                                             // Create a generic message for unknown format
                                             let frontend_msg = FrontendMessage::BuildEvent {
                                                 operation_id: operation.operation_id.clone(),
@@ -354,50 +372,54 @@ impl MessageServerClient for Actor {
                                                 message: "Build event".to_string(),
                                                 details: value,
                                             };
-                                            
+
                                             // Send to frontend
-                                            if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
-                                                let _ = send_on_channel(frontend_channel, &msg_bytes);
+                                            if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg)
+                                            {
+                                                let _ =
+                                                    send_on_channel(frontend_channel, &msg_bytes);
                                             }
                                         }
                                     }
                                 }
-                            },
+                            }
                             state::OperationType::Change => {
                                 // Handle programmer messages (for now use generic parsing)
                                 if let Ok(value) = serde_json::from_slice::<Value>(&message_data) {
-                                    let event_type = value.get("event_type")
+                                    let event_type = value
+                                        .get("event_type")
                                         .and_then(|v| v.as_str())
                                         .unwrap_or("unknown")
                                         .to_string();
-                                        
-                                    let content = value.get("content").cloned().unwrap_or(json!({}));
+
+                                    let content =
+                                        value.get("content").cloned().unwrap_or(json!({}));
                                     let message = content
                                         .get("message")
                                         .and_then(|v| v.as_str())
                                         .unwrap_or("")
                                         .to_string();
-                                    
+
                                     // Create frontend message
                                     let frontend_msg = FrontendMessage::ProgrammerEvent {
                                         operation_id: operation.operation_id.clone(),
-                                        event_type,
+                                        event_type: event_type.clone(),
                                         message,
-                                        details: content,
+                                        details: content.clone(),
                                     };
-                                    
+
                                     // Send to frontend
                                     if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
                                         let _ = send_on_channel(frontend_channel, &msg_bytes);
                                     }
-                                    
+
                                     // Check for completion
                                     if event_type == "TaskComplete" {
                                         let success = content
                                             .get("success")
                                             .and_then(|v| v.as_bool())
                                             .unwrap_or(false);
-                                            
+
                                         // Update operation status
                                         operation.status = if success {
                                             OperationStatus::Completed
@@ -405,7 +427,7 @@ impl MessageServerClient for Actor {
                                             OperationStatus::Failed
                                         };
                                         operation.end_time = Some(get_current_time());
-                                        
+
                                         // Send completion message
                                         let completion_msg = FrontendMessage::OperationCompleted {
                                             operation_id: operation.operation_id.clone(),
@@ -416,30 +438,36 @@ impl MessageServerClient for Actor {
                                                 "Code change failed".to_string()
                                             },
                                         };
-                                        
+
                                         if let Ok(msg_bytes) = serde_json::to_vec(&completion_msg) {
                                             let _ = send_on_channel(frontend_channel, &msg_bytes);
                                         }
-                                        
+
                                         // Close the actor channel
                                         let _ = close_channel(&channel_id);
-                                        
+
                                         // Remove from active channels
                                         app_state.actor_channels.remove(&operation_id);
                                     }
                                 }
-                            },
+                            }
                             _ => {
                                 // Handle other operation types with generic message
                                 if let Ok(value) = serde_json::from_slice::<Value>(&message_data) {
-                                    log(&format!("Received message for operation type {:?}: {}", operation.operation_type, value));
-                                    
+                                    log(&format!(
+                                        "Received message for operation type {:?}: {}",
+                                        operation.operation_type, value
+                                    ));
+
                                     // Create generic log message
                                     let frontend_msg = FrontendMessage::Log {
                                         level: "info".to_string(),
-                                        message: format!("Event from operation {}: {:?}", operation_id, value),
+                                        message: format!(
+                                            "Event from operation {}: {:?}",
+                                            operation_id, value
+                                        ),
                                     };
-                                    
+
                                     // Send to frontend
                                     if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
                                         let _ = send_on_channel(frontend_channel, &msg_bytes);
