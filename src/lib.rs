@@ -15,13 +15,11 @@ use crate::bindings::ntwk::theater::store;
 use crate::bindings::ntwk::theater::supervisor::{spawn, stop_child};
 use crate::bindings::ntwk::theater::types::State;
 
-use messaging::build::{parse_build_message, BuildActorMessage};
 use messaging::frontend::{FrontendCommand, FrontendMessage};
-use messaging::ChannelType;
 use messaging::handlers;
+use messaging::ChannelType;
 use operations::{
-    generate_operation_id, get_current_time, handle_build_command, handle_change_command,
-    send_status_update,
+    generate_operation_id, handle_build_command, handle_change_command, send_status_update,
 };
 use state::{AppState, InitData, OperationStatus};
 
@@ -99,7 +97,7 @@ impl MessageServerClient for Actor {
 
         // Parse the current state
         let state_bytes = state.unwrap_or_default();
-        let mut app_state: AppState = if !state_bytes.is_empty() {
+        let app_state: AppState = if !state_bytes.is_empty() {
             serde_json::from_slice(&state_bytes).map_err(|e| e.to_string())?
         } else {
             Err("No state found".to_string())?
@@ -125,7 +123,7 @@ impl MessageServerClient for Actor {
             if client_type == "frontend" {
                 // Accept the frontend channel connection
                 log("Accepting frontend channel connection");
-                
+
                 // Accept the channel - we'll register it when we receive the first message
                 return Ok((
                     Some(serde_json::to_vec(&app_state).map_err(|e| e.to_string())?),
@@ -168,7 +166,7 @@ impl MessageServerClient for Actor {
 
         // Determine channel type and handle accordingly
         let channel_type = app_state.get_channel_type(&channel_id);
-        
+
         match channel_type {
             // Frontend channel handling
             ChannelType::Frontend => {
@@ -176,21 +174,31 @@ impl MessageServerClient for Actor {
                 if app_state.frontend_channel_id.is_none() {
                     handlers::handle_frontend_setup(&mut app_state, &channel_id)?;
                 }
-                
+
                 // Handle frontend command
                 handlers::handle_frontend_message(&mut app_state, &channel_id, &message_data)?;
-            },
-            
+            }
+
             // Build actor channel handling
             ChannelType::Build { operation_id } => {
-                handlers::handle_build_message(&mut app_state, &channel_id, &operation_id, &message_data)?;
-            },
-            
+                handlers::handle_build_message(
+                    &mut app_state,
+                    &channel_id,
+                    &operation_id,
+                    &message_data,
+                )?;
+            }
+
             // Programmer actor channel handling
             ChannelType::Programmer { operation_id } => {
-                handlers::handle_programmer_message(&mut app_state, &channel_id, &operation_id, &message_data)?;
-            },
-            
+                handlers::handle_programmer_message(
+                    &mut app_state,
+                    &channel_id,
+                    &operation_id,
+                    &message_data,
+                )?;
+            }
+
             // Unknown channel handling
             ChannelType::Unknown => {
                 handlers::handle_unknown_message(&mut app_state, &channel_id, &message_data)?;
@@ -225,27 +233,29 @@ impl MessageServerClient for Actor {
 
                 // Close any other open channels
                 for (ch_id, ch_type) in app_state.channels.clone() {
-                    if matches!(ch_type, ChannelType::Build{..} | ChannelType::Programmer{..}) {
+                    if matches!(
+                        ch_type,
+                        ChannelType::Build { .. } | ChannelType::Programmer { .. }
+                    ) {
                         let _ = close_channel(&ch_id);
                     }
                 }
-                
+
                 // Clear channels
                 app_state.channels.clear();
                 app_state.actor_channels.clear();
             }
             ChannelType::Build { operation_id } | ChannelType::Programmer { operation_id } => {
                 log(&format!("Actor channel closed: {}", operation_id));
-                
+
                 // Remove channel from tracking
                 app_state.channels.remove(&channel_id);
                 app_state.actor_channels.remove(&operation_id);
-                
+
                 // Update operation status if it was still in progress
                 if let Some(op) = app_state.active_operations.get_mut(&operation_id) {
                     if op.status == OperationStatus::InProgress {
                         op.status = OperationStatus::Failed;
-                        op.end_time = Some(get_current_time());
                     }
                 }
             }
@@ -319,8 +329,6 @@ config = {}
                             actor_id: child_id,
                             channel_id: None, // No channel for this operation
                             status: state::OperationStatus::Completed,
-                            start_time: get_current_time(),
-                            end_time: Some(get_current_time()),
                         },
                     );
 
@@ -385,8 +393,6 @@ config = {}
                                 actor_id: child_id.clone(),
                                 channel_id: None,
                                 status: state::OperationStatus::Completed,
-                                start_time: get_current_time(),
-                                end_time: Some(get_current_time()),
                             },
                         );
 

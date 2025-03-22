@@ -2,7 +2,7 @@ use crate::bindings::ntwk::theater::message_server_host::{open_channel, request,
 use crate::bindings::ntwk::theater::runtime::log;
 use crate::bindings::ntwk::theater::supervisor::spawn;
 use crate::messaging::frontend::FrontendMessage;
-use crate::operations::utils::{generate_operation_id, get_current_time};
+use crate::operations::utils::generate_operation_id;
 use crate::state::{AppState, InfoResult, OperationState, OperationStatus, OperationType};
 
 use serde_json::{json, Value};
@@ -159,8 +159,6 @@ pub fn handle_build_command(
             actor_id: build_actor_id.clone(),
             channel_id: None, // Will set this after opening channel
             status: OperationStatus::Pending,
-            start_time: get_current_time(),
-            end_time: None,
         },
     );
 
@@ -236,7 +234,7 @@ pub fn handle_build_command(
         build_channel_id.clone(),
         crate::messaging::ChannelType::Build {
             operation_id: operation_id.clone(),
-        }
+        },
     );
 
     // Send the build command

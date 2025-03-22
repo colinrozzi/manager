@@ -1,6 +1,6 @@
+use crate::messaging::ChannelType;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::messaging::ChannelType;
 
 #[derive(Serialize, Deserialize)]
 pub struct InitData {
@@ -15,11 +15,11 @@ pub struct AppState {
     pub programmer_actor_id: String,
     pub runtime_content_fs_actor_id: String,
     pub build_store_id: String,
-    
+
     // Channel management
     pub frontend_channel_id: Option<String>,
     pub actor_channels: HashMap<String, String>, // Maps operation_id -> channel_id
-    pub channels: HashMap<String, ChannelType>, // Maps channel_id -> channel type
+    pub channels: HashMap<String, ChannelType>,  // Maps channel_id -> channel type
     pub active_operations: HashMap<String, OperationState>, // Maps operation_id -> operation state
 }
 
@@ -31,8 +31,6 @@ pub struct OperationState {
     pub actor_id: String,
     pub channel_id: Option<String>,
     pub status: OperationStatus,
-    pub start_time: u64,
-    pub end_time: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -90,20 +88,21 @@ impl AppState {
             active_operations: HashMap::new(),
         }
     }
-    
+
     // Helper method to register a channel
     pub fn register_channel(&mut self, channel_id: String, channel_type: ChannelType) {
-        self.channels.insert(channel_id.clone(), channel_type.clone());
-        
+        self.channels
+            .insert(channel_id.clone(), channel_type.clone());
+
         // Also update actor_channels for compatibility during transition
         match &channel_type {
             ChannelType::Build { operation_id } | ChannelType::Programmer { operation_id } => {
                 self.actor_channels.insert(operation_id.clone(), channel_id);
-            },
+            }
             _ => {}
         }
     }
-    
+
     // Helper to get operation ID from channel ID
     pub fn get_operation_for_channel(&self, channel_id: &str) -> Option<String> {
         match self.channels.get(channel_id) {
@@ -112,7 +111,7 @@ impl AppState {
             _ => None,
         }
     }
-    
+
     // Helper to get channel type
     pub fn get_channel_type(&self, channel_id: &str) -> ChannelType {
         self.channels.get(channel_id).cloned().unwrap_or_else(|| {
@@ -131,7 +130,6 @@ pub struct OperationSummary {
     pub operation_id: String,
     pub operation_type: OperationType,
     pub status: OperationStatus,
-    pub start_time: u64,
 }
 
 impl From<&OperationState> for OperationSummary {
@@ -140,7 +138,6 @@ impl From<&OperationState> for OperationSummary {
             operation_id: op_state.operation_id.clone(),
             operation_type: op_state.operation_type.clone(),
             status: op_state.status.clone(),
-            start_time: op_state.start_time,
         }
     }
 }
