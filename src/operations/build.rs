@@ -231,10 +231,13 @@ pub fn handle_build_command(
         op.status = OperationStatus::InProgress;
     }
 
-    // Store the mapping from operation ID to channel ID
-    app_state
-        .actor_channels
-        .insert(operation_id.clone(), build_channel_id.clone());
+    // Register the build channel
+    app_state.register_channel(
+        build_channel_id.clone(),
+        crate::messaging::ChannelType::Build {
+            operation_id: operation_id.clone(),
+        }
+    );
 
     // Send the build command
     let build_command = json!({

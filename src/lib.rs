@@ -17,6 +17,8 @@ use crate::bindings::ntwk::theater::types::State;
 
 use messaging::build::{parse_build_message, BuildActorMessage};
 use messaging::frontend::{FrontendCommand, FrontendMessage};
+use messaging::ChannelType;
+use messaging::handlers;
 use operations::{
     generate_operation_id, get_current_time, handle_build_command, handle_change_command,
     send_status_update,
@@ -97,7 +99,7 @@ impl MessageServerClient for Actor {
 
         // Parse the current state
         let state_bytes = state.unwrap_or_default();
-        let _app_state: AppState = if !state_bytes.is_empty() {
+        let mut app_state: AppState = if !state_bytes.is_empty() {
             serde_json::from_slice(&state_bytes).map_err(|e| e.to_string())?
         } else {
             Err("No state found".to_string())?
@@ -123,13 +125,10 @@ impl MessageServerClient for Actor {
             if client_type == "frontend" {
                 // Accept the frontend channel connection
                 log("Accepting frontend channel connection");
-
-                // Store the channel ID (will be available in handle_channel_message)
-                // We'll set it when we receive the first message
-
-                // Accept the channel
+                
+                // Accept the channel - we'll register it when we receive the first message
                 return Ok((
-                    Some(state_bytes),
+                    Some(serde_json::to_vec(&app_state).map_err(|e| e.to_string())?),
                     (ChannelAccept {
                         accepted: true,
                         message: Some("Connected to manager actor. Using channel-based communication for all operations.".as_bytes().to_vec()),
@@ -141,7 +140,7 @@ impl MessageServerClient for Actor {
         // Reject other channel types
         log("Rejecting unknown channel type");
         Ok((
-            Some(state_bytes),
+            Some(serde_json::to_vec(&app_state).map_err(|e| e.to_string())?),
             (ChannelAccept {
                 accepted: false,
                 message: Some("Unknown channel type".as_bytes().to_vec()),
@@ -167,318 +166,34 @@ impl MessageServerClient for Actor {
             Err("No state found".to_string())?
         };
 
-        // Check if this is a message from the frontend
-        if app_state.frontend_channel_id.is_none()
-            || app_state.frontend_channel_id.as_ref() == Some(&channel_id)
-        {
-            // If frontend channel isn't set yet, set it now
-            if app_state.frontend_channel_id.is_none() {
-                log(&format!("Setting frontend channel ID: {}", channel_id));
-                app_state.frontend_channel_id = Some(channel_id.clone());
-
-                // Send welcome message
-                let welcome_msg = FrontendMessage::Log {
-                    level: "info".to_string(),
-                    message: "Connected to manager actor. Using channel-based communication for all operations.".to_string(),
-                };
-
-                if let Ok(msg_bytes) = serde_json::to_vec(&welcome_msg) {
-                    let _ = send_on_channel(&channel_id, &msg_bytes);
+        // Determine channel type and handle accordingly
+        let channel_type = app_state.get_channel_type(&channel_id);
+        
+        match channel_type {
+            // Frontend channel handling
+            ChannelType::Frontend => {
+                // Handle frontend channel setup if needed
+                if app_state.frontend_channel_id.is_none() {
+                    handlers::handle_frontend_setup(&mut app_state, &channel_id)?;
                 }
-
-                // Send initial status update
-                send_status_update(&app_state, &channel_id)?;
-            }
-
-            // Try to parse the frontend command
-            match serde_json::from_slice::<FrontendCommand>(&message_data) {
-                Ok(command) => {
-                    // Process the command
-                    match process_frontend_command(&mut app_state, command, &channel_id) {
-                        Ok(_) => {
-                            // Command processed successfully
-                            let updated_state_bytes =
-                                serde_json::to_vec(&app_state).map_err(|e| e.to_string())?;
-                            return Ok((Some(updated_state_bytes),));
-                        }
-                        Err(e) => {
-                            // Send error back to frontend
-                            log(&format!("Error processing command: {}", e));
-                            let error_msg = FrontendMessage::Error {
-                                code: "command_error".to_string(),
-                                message: e,
-                            };
-
-                            if let Ok(msg_bytes) = serde_json::to_vec(&error_msg) {
-                                let _ = send_on_channel(&channel_id, &msg_bytes);
-                            }
-
-                            let updated_state_bytes =
-                                serde_json::to_vec(&app_state).map_err(|e| e.to_string())?;
-                            return Ok((Some(updated_state_bytes),));
-                        }
-                    }
-                }
-                Err(e) => {
-                    // Invalid command format
-                    log(&format!("Invalid frontend command format: {}", e));
-                    let error_msg = FrontendMessage::Error {
-                        code: "invalid_command".to_string(),
-                        message: format!("Invalid command format: {}", e),
-                    };
-
-                    if let Ok(msg_bytes) = serde_json::to_vec(&error_msg) {
-                        let _ = send_on_channel(&channel_id, &msg_bytes);
-                    }
-                }
-            }
-        } else {
-            // This is a message from another actor (build or programmer)
-            // Find which operation this channel belongs to
-            let operation_id = app_state
-                .actor_channels
-                .iter()
-                .find(|(_, channel)| channel == &&channel_id)
-                .map(|(id, _)| id.clone());
-
-            if let Some(operation_id) = operation_id {
-                log(&format!("Message from actor channel: {}", operation_id));
-
-                // Forward the message to the frontend
-                if let Some(frontend_channel) = &app_state.frontend_channel_id {
-                    // Forward the message to the frontend based on operation type
-                    if let Some(operation) = app_state.active_operations.get_mut(&operation_id) {
-                        match operation.operation_type {
-                            state::OperationType::Build => {
-                                // Try to parse as a build actor message
-                                match parse_build_message(&message_data) {
-                                    Ok(build_msg) => {
-                                        log(&format!("Received build message: {:?}", build_msg));
-
-                                        // Extract message details
-                                        let event_type = String::from(&build_msg);
-                                        let message = build_msg.get_message();
-
-                                        // Create details based on message type
-                                        let details = match &build_msg {
-                                            BuildActorMessage::Log { level, .. } => {
-                                                json!({
-                                                    "level": level
-                                                })
-                                            }
-                                            BuildActorMessage::Progress {
-                                                status,
-                                                percent_complete,
-                                                ..
-                                            } => {
-                                                json!({
-                                                    "status": status,
-                                                    "percent_complete": percent_complete
-                                                })
-                                            }
-                                            BuildActorMessage::CommandStarted { command, args } => {
-                                                json!({
-                                                    "command": command,
-                                                    "args": args
-                                                })
-                                            }
-                                            BuildActorMessage::CommandOutput { stdout, stderr } => {
-                                                json!({
-                                                    "stdout": stdout,
-                                                    "stderr": stderr
-                                                })
-                                            }
-                                            BuildActorMessage::BuildComplete {
-                                                success,
-                                                wasm_path,
-                                                wasm_hash,
-                                                error,
-                                            } => {
-                                                json!({
-                                                    "success": success,
-                                                    "wasm_path": wasm_path,
-                                                    "wasm_hash": wasm_hash,
-                                                    "error": error
-                                                })
-                                            }
-                                        };
-
-                                        // Create frontend message
-                                        let frontend_msg = FrontendMessage::BuildEvent {
-                                            operation_id: operation.operation_id.clone(),
-                                            event_type,
-                                            message,
-                                            details,
-                                        };
-
-                                        // Send to frontend
-                                        if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
-                                            let _ = send_on_channel(frontend_channel, &msg_bytes);
-                                        }
-
-                                        // Check for completion event
-                                        if let BuildActorMessage::BuildComplete {
-                                            success, ..
-                                        } = build_msg
-                                        {
-                                            // Update operation status
-                                            operation.status = if success {
-                                                OperationStatus::Completed
-                                            } else {
-                                                OperationStatus::Failed
-                                            };
-                                            operation.end_time = Some(get_current_time());
-
-                                            // Send completion message
-                                            let completion_msg =
-                                                FrontendMessage::OperationCompleted {
-                                                    operation_id: operation.operation_id.clone(),
-                                                    success,
-                                                    message: if success {
-                                                        "Build completed successfully".to_string()
-                                                    } else {
-                                                        "Build failed".to_string()
-                                                    },
-                                                };
-
-                                            if let Ok(msg_bytes) =
-                                                serde_json::to_vec(&completion_msg)
-                                            {
-                                                let _ =
-                                                    send_on_channel(frontend_channel, &msg_bytes);
-                                            }
-
-                                            // Close the actor channel
-                                            let _ = close_channel(&channel_id);
-
-                                            // Remove from active channels
-                                            app_state.actor_channels.remove(&operation_id);
-                                        }
-                                    }
-                                    Err(e) => {
-                                        // Failed to parse build message, try generic parsing
-                                        log(&format!("Failed to parse build message: {}, falling back to generic parsing", e));
-
-                                        // Try to parse generically
-                                        if let Ok(value) =
-                                            serde_json::from_slice::<Value>(&message_data)
-                                        {
-                                            log(&format!("Received raw json: {}", value));
-
-                                            // Create a generic message for unknown format
-                                            let frontend_msg = FrontendMessage::BuildEvent {
-                                                operation_id: operation.operation_id.clone(),
-                                                event_type: "unknown".to_string(),
-                                                message: "Build event".to_string(),
-                                                details: value,
-                                            };
-
-                                            // Send to frontend
-                                            if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg)
-                                            {
-                                                let _ =
-                                                    send_on_channel(frontend_channel, &msg_bytes);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            state::OperationType::Change => {
-                                // Handle programmer messages (for now use generic parsing)
-                                if let Ok(value) = serde_json::from_slice::<Value>(&message_data) {
-                                    let event_type = value
-                                        .get("event_type")
-                                        .and_then(|v| v.as_str())
-                                        .unwrap_or("unknown")
-                                        .to_string();
-
-                                    let content =
-                                        value.get("content").cloned().unwrap_or(json!({}));
-                                    let message = content
-                                        .get("message")
-                                        .and_then(|v| v.as_str())
-                                        .unwrap_or("")
-                                        .to_string();
-
-                                    // Create frontend message
-                                    let frontend_msg = FrontendMessage::ProgrammerEvent {
-                                        operation_id: operation.operation_id.clone(),
-                                        event_type: event_type.clone(),
-                                        message,
-                                        details: content.clone(),
-                                    };
-
-                                    // Send to frontend
-                                    if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
-                                        let _ = send_on_channel(frontend_channel, &msg_bytes);
-                                    }
-
-                                    // Check for completion
-                                    if event_type == "TaskComplete" {
-                                        let success = content
-                                            .get("success")
-                                            .and_then(|v| v.as_bool())
-                                            .unwrap_or(false);
-
-                                        // Update operation status
-                                        operation.status = if success {
-                                            OperationStatus::Completed
-                                        } else {
-                                            OperationStatus::Failed
-                                        };
-                                        operation.end_time = Some(get_current_time());
-
-                                        // Send completion message
-                                        let completion_msg = FrontendMessage::OperationCompleted {
-                                            operation_id: operation.operation_id.clone(),
-                                            success,
-                                            message: if success {
-                                                "Code change completed successfully".to_string()
-                                            } else {
-                                                "Code change failed".to_string()
-                                            },
-                                        };
-
-                                        if let Ok(msg_bytes) = serde_json::to_vec(&completion_msg) {
-                                            let _ = send_on_channel(frontend_channel, &msg_bytes);
-                                        }
-
-                                        // Close the actor channel
-                                        let _ = close_channel(&channel_id);
-
-                                        // Remove from active channels
-                                        app_state.actor_channels.remove(&operation_id);
-                                    }
-                                }
-                            }
-                            _ => {
-                                // Handle other operation types with generic message
-                                if let Ok(value) = serde_json::from_slice::<Value>(&message_data) {
-                                    log(&format!(
-                                        "Received message for operation type {:?}: {}",
-                                        operation.operation_type, value
-                                    ));
-
-                                    // Create generic log message
-                                    let frontend_msg = FrontendMessage::Log {
-                                        level: "info".to_string(),
-                                        message: format!(
-                                            "Event from operation {}: {:?}",
-                                            operation_id, value
-                                        ),
-                                    };
-
-                                    // Send to frontend
-                                    if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
-                                        let _ = send_on_channel(frontend_channel, &msg_bytes);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                log(&format!("Unknown channel message: {}", channel_id));
+                
+                // Handle frontend command
+                handlers::handle_frontend_message(&mut app_state, &channel_id, &message_data)?;
+            },
+            
+            // Build actor channel handling
+            ChannelType::Build { operation_id } => {
+                handlers::handle_build_message(&mut app_state, &channel_id, &operation_id, &message_data)?;
+            },
+            
+            // Programmer actor channel handling
+            ChannelType::Programmer { operation_id } => {
+                handlers::handle_programmer_message(&mut app_state, &channel_id, &operation_id, &message_data)?;
+            },
+            
+            // Unknown channel handling
+            ChannelType::Unknown => {
+                handlers::handle_unknown_message(&mut app_state, &channel_id, &message_data)?;
             }
         }
 
@@ -502,39 +217,40 @@ impl MessageServerClient for Actor {
             Err("No state found".to_string())?
         };
 
-        // Check if this is the frontend channel
-        if app_state
-            .frontend_channel_id
-            .as_ref()
-            .map_or(false, |id| id == &channel_id)
-        {
-            log("Frontend channel closed");
-            app_state.frontend_channel_id = None;
+        // Check channel type
+        match app_state.get_channel_type(&channel_id) {
+            ChannelType::Frontend => {
+                log("Frontend channel closed");
+                app_state.frontend_channel_id = None;
 
-            // Close any open actor channels
-            for (_, actor_channel) in &app_state.actor_channels {
-                let _ = close_channel(actor_channel);
+                // Close any other open channels
+                for (ch_id, ch_type) in app_state.channels.clone() {
+                    if matches!(ch_type, ChannelType::Build{..} | ChannelType::Programmer{..}) {
+                        let _ = close_channel(&ch_id);
+                    }
+                }
+                
+                // Clear channels
+                app_state.channels.clear();
+                app_state.actor_channels.clear();
             }
-            app_state.actor_channels.clear();
-        } else {
-            // Find and remove the actor channel
-            let actor_id = app_state
-                .actor_channels
-                .iter()
-                .find(|(_, channel)| channel == &&channel_id)
-                .map(|(id, _)| id.clone());
-
-            if let Some(id) = actor_id {
-                log(&format!("Actor channel closed: {}", id));
-                app_state.actor_channels.remove(&id);
-
+            ChannelType::Build { operation_id } | ChannelType::Programmer { operation_id } => {
+                log(&format!("Actor channel closed: {}", operation_id));
+                
+                // Remove channel from tracking
+                app_state.channels.remove(&channel_id);
+                app_state.actor_channels.remove(&operation_id);
+                
                 // Update operation status if it was still in progress
-                if let Some(op) = app_state.active_operations.get_mut(&id) {
+                if let Some(op) = app_state.active_operations.get_mut(&operation_id) {
                     if op.status == OperationStatus::InProgress {
                         op.status = OperationStatus::Failed;
                         op.end_time = Some(get_current_time());
                     }
                 }
+            }
+            _ => {
+                log(&format!("Unknown channel closed: {}", channel_id));
             }
         }
 

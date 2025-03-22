@@ -94,8 +94,13 @@ pub fn handle_change_command(
         },
     );
     
-    // Store the mapping from operation ID to channel ID
-    app_state.actor_channels.insert(operation_id.clone(), programmer_channel_id.clone());
+    // Register the programmer channel
+    app_state.register_channel(
+        programmer_channel_id.clone(),
+        crate::messaging::ChannelType::Programmer {
+            operation_id: operation_id.clone(),
+        }
+    );
     
     // Send the change command
     let change_command = json!({

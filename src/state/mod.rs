@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use crate::messaging::ChannelType;
 
 #[derive(Serialize, Deserialize)]
 pub struct InitData {
@@ -18,6 +19,7 @@ pub struct AppState {
     // Channel management
     pub frontend_channel_id: Option<String>,
     pub actor_channels: HashMap<String, String>, // Maps operation_id -> channel_id
+    pub channels: HashMap<String, ChannelType>, // Maps channel_id -> channel type
     pub active_operations: HashMap<String, OperationState>, // Maps operation_id -> operation state
 }
 
@@ -84,8 +86,42 @@ impl AppState {
             build_store_id,
             frontend_channel_id: None,
             actor_channels: HashMap::new(),
+            channels: HashMap::new(),
             active_operations: HashMap::new(),
         }
+    }
+    
+    // Helper method to register a channel
+    pub fn register_channel(&mut self, channel_id: String, channel_type: ChannelType) {
+        self.channels.insert(channel_id.clone(), channel_type.clone());
+        
+        // Also update actor_channels for compatibility during transition
+        match &channel_type {
+            ChannelType::Build { operation_id } | ChannelType::Programmer { operation_id } => {
+                self.actor_channels.insert(operation_id.clone(), channel_id);
+            },
+            _ => {}
+        }
+    }
+    
+    // Helper to get operation ID from channel ID
+    pub fn get_operation_for_channel(&self, channel_id: &str) -> Option<String> {
+        match self.channels.get(channel_id) {
+            Some(ChannelType::Build { operation_id }) => Some(operation_id.clone()),
+            Some(ChannelType::Programmer { operation_id }) => Some(operation_id.clone()),
+            _ => None,
+        }
+    }
+    
+    // Helper to get channel type
+    pub fn get_channel_type(&self, channel_id: &str) -> ChannelType {
+        self.channels.get(channel_id).cloned().unwrap_or_else(|| {
+            if self.frontend_channel_id.as_ref() == Some(&channel_id.to_string()) {
+                ChannelType::Frontend
+            } else {
+                ChannelType::Unknown
+            }
+        })
     }
 }
 
