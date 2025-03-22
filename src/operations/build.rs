@@ -122,8 +122,8 @@ pub fn handle_build_command(
     };
 
     log(&format!(
-        "Filesystem info: hash={}, store_id={}",
-        fs_info.head_hash, fs_info.store_id
+        "Filesystem info: hash={}, store_id={}, build_store_id={}",
+        fs_info.head_hash, fs_info.store_id, app_state.build_store_id
     ));
 
     // Spawn the build actor
