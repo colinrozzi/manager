@@ -6,6 +6,9 @@ use crate::operations::{handle_frontend_command, send_status_update};
 use crate::state::{AppState, OperationStatus};
 use serde_json::{json, Value};
 
+mod programmer_handler;
+pub use programmer_handler::handle_programmer_message;
+
 /// Handle frontend channel setup
 pub fn handle_frontend_setup(app_state: &mut AppState, channel_id: &str) -> Result<(), String> {
     log(&format!("Setting frontend channel ID: {}", channel_id));
@@ -235,103 +238,6 @@ pub fn handle_build_message(
             Ok(())
         }
     }
-}
-
-/// Handle programmer message
-pub fn handle_programmer_message(
-    app_state: &mut AppState,
-    channel_id: &str,
-    operation_id: &str,
-    message_data: &[u8],
-) -> Result<(), String> {
-    // Get frontend channel
-    let frontend_channel = match &app_state.frontend_channel_id {
-        Some(id) => id,
-        None => {
-            log("Warning: Received programmer message but no frontend channel is available");
-            // We can still process the message, just can't forward to frontend
-            return Ok(());
-        }
-    };
-
-    // Get operation state
-    let operation = match app_state.active_operations.get_mut(operation_id) {
-        Some(op) => op,
-        None => {
-            log(&format!(
-                "Operation {} not found for programmer message",
-                operation_id
-            ));
-            return Ok(());
-        }
-    };
-
-    // Handle programmer messages (using generic parsing)
-    if let Ok(value) = serde_json::from_slice::<Value>(message_data) {
-        let event_type = value
-            .get("event_type")
-            .and_then(|v| v.as_str())
-            .unwrap_or("unknown")
-            .to_string();
-
-        let content = value.get("content").cloned().unwrap_or(json!({}));
-        let message = content
-            .get("message")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        // Create frontend message
-        let frontend_msg = FrontendMessage::ProgrammerEvent {
-            operation_id: operation.operation_id.clone(),
-            event_type: event_type.clone(),
-            message,
-            details: content.clone(),
-        };
-
-        // Send to frontend
-        if let Ok(msg_bytes) = serde_json::to_vec(&frontend_msg) {
-            let _ = send_on_channel(frontend_channel, &msg_bytes);
-        }
-
-        // Check for completion
-        if event_type == "TaskComplete" {
-            let success = content
-                .get("success")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
-
-            // Update operation status
-            operation.status = if success {
-                OperationStatus::Completed
-            } else {
-                OperationStatus::Failed
-            };
-
-            // Send completion message
-            let completion_msg = FrontendMessage::OperationCompleted {
-                operation_id: operation.operation_id.clone(),
-                success,
-                message: if success {
-                    "Code change completed successfully".to_string()
-                } else {
-                    "Code change failed".to_string()
-                },
-            };
-
-            if let Ok(msg_bytes) = serde_json::to_vec(&completion_msg) {
-                let _ = send_on_channel(frontend_channel, &msg_bytes);
-            }
-
-            // Close the actor channel
-            let _ = close_channel(&channel_id.to_string());
-
-            // Remove from channels
-            app_state.channels.remove(channel_id);
-        }
-    }
-
-    Ok(())
 }
 
 /// Handle unknown channel message
