@@ -42,24 +42,19 @@ theater channel-open manager --data '{"client_type":"frontend","version":"1.0"}'
 2. Send commands through the channel:
 ```bash
 # Build command
-theater channel-send <channel-id> '{"BuildActor":null}'
+theater channel open <channel-id> '{"BuildActor":null}'
 
 # Change request
-theater channel-send <channel-id> '{"ChangeRequest":{"description":"Add new feature"}}'
+channel> send <channel-id> '{"ChangeRequest":{"description":"Add new feature"}}'
 
 # Start actor
-theater channel-send <channel-id> '{"StartActor":null}'
+channel> send <channel-id> '{"StartActor":null}'
 
 # Stop actor
-theater channel-send <channel-id> '{"StopActor":null}'
+channel> send <channel-id> '{"StopActor":null}'
 
 # Get status
-theater channel-send <channel-id> '{"GetStatus":null}'
-```
-
-3. Receive progress updates in real-time:
-```bash
-theater channel-recv <channel-id>
+channel> send <channel-id> '{"GetStatus":null}'
 ```
 
 ## Channel Protocol
@@ -84,66 +79,6 @@ The channel-based communication provides detailed progress updates:
 - `Log` - Log messages
 - `Error` - Error messages
 
-## Theater Studio CLI
-
-This package includes a REPL-style CLI for interacting with the Theater actor system.
-
-### Building the CLI
-
-```bash
-cargo build --bin theater-studio
-```
-
-### Running the CLI
-
-```bash
-cargo run --bin theater-studio
-```
-
-### Available Commands
-
-#### Session Commands
-- `start` - Start a new development session
-- `stop` - Stop the current development session
-- `status` - Show the status of the current session
-
-#### Code Commands
-- `change <desc>` - Submit code changes with description
-- `build` - Build the current code into a WebAssembly actor
-
-#### Actor Commands
-- `start-actor` - Start the built actor
-- `stop-actor` - Stop the running actor
-- `restart-actor` - Restart the running actor
-- `logs` - Show actor logs
-
-#### Interaction Commands
-- `state` - Display the actor's current state
-- `http <method> <path> [data]` - Send HTTP request to actor
-
-#### Utility Commands
-- `help` - Display help information
-- `clear` - Clear the terminal screen
-- `exit` - Exit the Theater Studio CLI
-
-### Example Workflow
-
-```
-# Starting a session
-theater> start
-
-# Making code changes
-theater> change "Add a new endpoint for user data"
-
-# Building the actor
-theater> build
-
-# Starting the actor
-theater> start-actor
-
-# Sending an HTTP request
-theater> http GET /api/users
-```
 
 ## Project Structure
 
