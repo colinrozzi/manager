@@ -199,13 +199,23 @@ impl MessageServerClient for Actor {
             ChannelType::Unknown => {
                 // Handle frontend channel setup if needed
                 if app_state.frontend_channel_id.is_none() {
-                    handlers::handle_frontend_setup(&mut app_state, &channel_id)?;
-                    handlers::handle_frontend_message(&mut app_state, &channel_id, &message_data)?;
+                    handlers::handle_frontend_setup(&mut app_state, &channel_id)
+                        .expect("Failed to setup frontend channel");
+                    handlers::handle_frontend_message(&mut app_state, &channel_id, &message_data)
+                        .expect("Failed to handle frontend message");
+                } else {
+                    // Reject unknown channels
+                    log(&format!(
+                        "Unknown channel message [{}]: {:?}",
+                        channel_id, message_data
+                    ));
+                    log(&format!(
+                        "Frontend channel: {:?}",
+                        app_state.frontend_channel_id
+                    ));
+                    log(&format!("Channels: {:?}", app_state.channels));
+                    handlers::handle_unknown_message(&mut app_state, &channel_id, &message_data)?;
                 }
-
-                // Reject unknown channels
-                log(&format!("Unknown channel message: {}", channel_id));
-                handlers::handle_unknown_message(&mut app_state, &channel_id, &message_data)?;
             }
         }
 
