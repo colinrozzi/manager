@@ -101,6 +101,12 @@ The Manager actor sends messages back to the CLI using the `FrontendMessage` enu
     "details": { /* JSON object with event-specific details */ }
   }
 }
+
+{
+  "ChildStarted": {
+    "child_id": "uuid-string",
+  }
+}
 ```
 
 ### Log and Error Messages

@@ -75,6 +75,11 @@ config = {}
                         child_id: child_id.clone(),
                     };
 
+                    log(&format!(
+                        "Sending ChildStarted message: {:?}",
+                        child_started_msg
+                    ));
+
                     if let Ok(msg_bytes) = serde_json::to_vec(&child_started_msg) {
                         let _ = send_on_channel(channel_id, &msg_bytes);
                     }
