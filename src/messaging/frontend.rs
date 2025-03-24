@@ -39,6 +39,10 @@ pub enum FrontendMessage {
         message: String,
     },
 
+    ChildStarted {
+        child_id: String,
+    },
+
     // Actor events (forwarded from child actors)
     BuildEvent {
         operation_id: String,

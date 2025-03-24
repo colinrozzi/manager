@@ -65,11 +65,19 @@ config = {}
                         state::OperationState {
                             operation_id: operation_id.clone(),
                             operation_type: state::OperationType::Start,
-                            actor_id: child_id,
+                            actor_id: child_id.clone(),
                             channel_id: None, // No channel for this operation
                             status: state::OperationStatus::Completed,
                         },
                     );
+
+                    let child_started_msg = FrontendMessage::ChildStarted {
+                        child_id: child_id.clone(),
+                    };
+
+                    if let Ok(msg_bytes) = serde_json::to_vec(&child_started_msg) {
+                        let _ = send_on_channel(channel_id, &msg_bytes);
+                    }
 
                     // Send completion message
                     let complete_msg = FrontendMessage::OperationCompleted {
