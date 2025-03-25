@@ -55,6 +55,9 @@ pub enum FrontendMessage {
     ChildStarted {
         child_id: String,
     },
+    ChildStopped {
+        child_id: String,
+    },
 
     // Log messages
     Log {

@@ -148,8 +148,6 @@ config = {}
                             },
                         );
 
-                        app_state.child_id = None;
-
                         // Send completion message
                         let complete_msg = FrontendMessage::OperationCompleted {
                             operation_id,
@@ -160,6 +158,16 @@ config = {}
                         if let Ok(msg_bytes) = serde_json::to_vec(&complete_msg) {
                             let _ = send_on_channel(channel_id, &msg_bytes);
                         }
+
+                        let child_stopped_msg = FrontendMessage::ChildStopped {
+                            child_id: child_id.clone(),
+                        };
+
+                        if let Ok(msg_bytes) = serde_json::to_vec(&child_stopped_msg) {
+                            let _ = send_on_channel(channel_id, &msg_bytes);
+                        }
+
+                        app_state.child_id = None;
 
                         Ok(())
                     }
