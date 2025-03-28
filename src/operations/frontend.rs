@@ -14,6 +14,7 @@ pub fn handle_frontend_command(
     app_state: &mut AppState,
     command: FrontendCommand,
     channel_id: &String,
+    build_store_id: &String,
 ) -> Result<(), String> {
     match command {
         FrontendCommand::StartActor => {
@@ -23,11 +24,12 @@ pub fn handle_frontend_command(
             let operation_id = generate_operation_id();
 
             // Create child manifest
-            let child_manifest = r#"
+            let child_manifest = format!(
+                r#"
 name = "child"
 version = "0.1.0"
 description = "An HTTP server Theater actor"
-component_path = "store://44768743-9232-43de-9819-47c210588b2b/wasm"
+component_path = "store://{}/wasm"
 
 [interface]
 implements = "ntwk:theater/actor"
@@ -35,12 +37,14 @@ requires = []
 
 [[handlers]]
 type = "runtime"
-config = {}
+config = {{}}
 
 [[handlers]]
 type = "http-framework"
-config = {}
-            "#;
+config = {{}}
+            "#,
+                build_store_id
+            );
 
             // Send operation started message
             let start_msg = FrontendMessage::OperationStarted {
@@ -54,7 +58,7 @@ config = {}
             }
 
             // Spawn the child actor
-            match spawn(child_manifest, None) {
+            match spawn(&child_manifest, None) {
                 Ok(child_id) => {
                     log(&format!("Spawned child actor with ID: {}", child_id));
                     app_state.child_id = Some(child_id.clone());

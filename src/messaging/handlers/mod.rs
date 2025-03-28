@@ -39,12 +39,18 @@ pub fn handle_frontend_message(
     app_state: &mut AppState,
     channel_id: &str,
     message_data: &[u8],
+    build_store_id: &str,
 ) -> Result<(), String> {
     // Process frontend commands
     match serde_json::from_slice::<FrontendCommand>(message_data) {
         Ok(command) => {
             // Process the command
-            if let Err(e) = handle_frontend_command(app_state, command, &channel_id.to_string()) {
+            if let Err(e) = handle_frontend_command(
+                app_state,
+                command,
+                &channel_id.to_string(),
+                &build_store_id.to_string(),
+            ) {
                 // Send error back to frontend
                 log(&format!("Error processing command: {}", e));
                 let error_msg = FrontendMessage::Error {

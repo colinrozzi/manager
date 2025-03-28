@@ -167,12 +167,18 @@ impl MessageServerClient for Actor {
 
         // Determine channel type and handle accordingly
         let channel_type = app_state.get_channel_type(&channel_id);
+        let build_store_id = app_state.build_store_id.clone();
 
         match channel_type {
             // Frontend channel handling
             ChannelType::Frontend => {
                 // Handle frontend command
-                handlers::handle_frontend_message(&mut app_state, &channel_id, &message_data)?;
+                handlers::handle_frontend_message(
+                    &mut app_state,
+                    &channel_id,
+                    &message_data,
+                    &build_store_id,
+                )?;
             }
 
             // Build actor channel handling
@@ -201,8 +207,13 @@ impl MessageServerClient for Actor {
                 if app_state.frontend_channel_id.is_none() {
                     handlers::handle_frontend_setup(&mut app_state, &channel_id)
                         .expect("Failed to setup frontend channel");
-                    handlers::handle_frontend_message(&mut app_state, &channel_id, &message_data)
-                        .expect("Failed to handle frontend message");
+                    handlers::handle_frontend_message(
+                        &mut app_state,
+                        &channel_id,
+                        &message_data,
+                        &build_store_id,
+                    )
+                    .expect("Failed to handle frontend message");
                 } else {
                     // Reject unknown channels
                     log(&format!(
